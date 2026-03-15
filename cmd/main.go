@@ -32,6 +32,7 @@ func main() {
 	routeHandler := handler.NewRouteHandler()
 	diagnosticHandler := handler.NewDiagnosticHandler()
 	maintenanceHandler := handler.NewMaintenanceHandler()
+	configHandler := handler.NewConfigHandler()
 
 	// 在 GoAdmin 之前注册 API 路由（直接注册到主路由器）
 	r.GET("/health", func(c *gin.Context) {
@@ -144,6 +145,16 @@ func main() {
 	r.GET("/api/v1/sessions", maintenanceHandler.GetSessions)
 	r.DELETE("/api/v1/sessions/:session_id", maintenanceHandler.DeleteSession)
 
+	// 配置模块 API - 端口管理
+	r.GET("/api/v1/ports", configHandler.GetPorts)
+	r.PUT("/api/v1/ports/:port_id", configHandler.UpdatePort)
+
+	// 配置模块 API - 链路聚合
+	r.GET("/api/v1/link-aggregation", configHandler.GetLinkAggregation)
+	r.POST("/api/v1/link-aggregation", configHandler.CreateLinkAggregation)
+	r.PUT("/api/v1/link-aggregation/:id", configHandler.UpdateLinkAggregation)
+	r.DELETE("/api/v1/link-aggregation/:id", configHandler.DeleteLinkAggregation)
+
 	// 首页重定向到 Dashboard
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "/admin")
@@ -197,6 +208,7 @@ func main() {
 	// 初始化菜单
 	datamodel.InitMenu(e.SqliteConnection())
 	datamodel.InitDashboard(e.SqliteConnection())
+	datamodel.InitConfigMenu(e.SqliteConnection())
 
 	r.Static("/uploads", "./uploads")
 
@@ -227,6 +239,23 @@ func main() {
 	e.HTML("GET", "/admin/maintenance/ddos-protection", datamodel.GetDDoSProtectionContent, false)
 	e.HTML("GET", "/admin/maintenance/arp-protection", datamodel.GetARPProtectionContent, false)
 	e.HTML("GET", "/admin/maintenance/sessions", datamodel.GetSessionsContent, false)
+
+	// 配置模块
+	e.HTML("GET", "/admin/config/ports", datamodel.GetPortsContent, false)
+	e.HTML("GET", "/admin/config/link-aggregation", datamodel.GetLinkAggregationContent, false)
+	e.HTML("GET", "/admin/config/storm-control", datamodel.GetStormControlContent, false)
+	e.HTML("GET", "/admin/config/flow-control", datamodel.GetFlowControlContent, false)
+	e.HTML("GET", "/admin/config/port-isolation", datamodel.GetPortIsolationContent, false)
+	e.HTML("GET", "/admin/config/port-monitor", datamodel.GetPortMonitorContent, false)
+	e.HTML("GET", "/admin/config/vlan", datamodel.GetVLANContent, false)
+	e.HTML("GET", "/admin/config/mac-table", datamodel.GetMacTableContent, false)
+	e.HTML("GET", "/admin/config/stp", datamodel.GetSTPContent, false)
+	e.HTML("GET", "/admin/config/erps", datamodel.GetERPSContent, false)
+	e.HTML("GET", "/admin/config/poe", datamodel.GetPoEContent, false)
+	e.HTML("GET", "/admin/config/port-mirror", datamodel.GetPortMirrorContent, false)
+	e.HTML("GET", "/admin/config/multicast", datamodel.GetMulticastContent, false)
+	e.HTML("GET", "/admin/config/resource", datamodel.GetResourceContent, false)
+	e.HTML("GET", "/admin/config/stack", datamodel.GetStackContent, false)
 
 	fmt.Println("=== GoAdmin 启动完成 ===")
 	fmt.Println("Admin UI: http://localhost:9033/admin")
