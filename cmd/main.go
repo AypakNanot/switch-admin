@@ -29,6 +29,8 @@ func main() {
 	e := engine.Default()
 
 	sysHandler := handler.NewSystemHandler()
+	routeHandler := handler.NewRouteHandler()
+	diagnosticHandler := handler.NewDiagnosticHandler()
 
 	// 在 GoAdmin 之前注册 API 路由（直接注册到主路由器）
 	r.GET("/health", func(c *gin.Context) {
@@ -55,6 +57,24 @@ func main() {
 			},
 		})
 	})
+
+	// 网络模块 API - 路由管理
+	r.GET("/api/v1/routes/table", routeHandler.GetRouteTable)
+	r.GET("/api/v1/routes/static", routeHandler.GetStaticRoutes)
+	r.GET("/api/v1/routes/static/:id", routeHandler.GetStaticRoute)
+	r.POST("/api/v1/routes/static", routeHandler.CreateStaticRoute)
+	r.PUT("/api/v1/routes/static/:id", routeHandler.UpdateStaticRoute)
+	r.DELETE("/api/v1/routes/static/:id", routeHandler.DeleteStaticRoute)
+
+	// 网络模块 API - 诊断工具
+	r.GET("/api/v1/diagnostic/cable/ports", diagnosticHandler.GetDetectablePorts)
+	r.POST("/api/v1/diagnostic/cable", diagnosticHandler.ExecuteCableTest)
+	r.GET("/api/v1/diagnostic/ping/:task_id", diagnosticHandler.GetPingTaskResult)
+	r.POST("/api/v1/diagnostic/ping", diagnosticHandler.CreatePingTask)
+	r.DELETE("/api/v1/diagnostic/ping/:task_id", diagnosticHandler.DeletePingTask)
+	r.GET("/api/v1/diagnostic/traceroute/:task_id", diagnosticHandler.GetTracerouteTaskResult)
+	r.POST("/api/v1/diagnostic/traceroute", diagnosticHandler.CreateTracerouteTask)
+	r.DELETE("/api/v1/diagnostic/traceroute/:task_id", diagnosticHandler.DeleteTracerouteTask)
 	// 首页重定向到 Dashboard
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "/admin")
@@ -92,19 +112,38 @@ func main() {
 
 	template.AddComp(chartjs.NewChart())
 
-	if err := e.AddConfig(&cfg).
-		AddGenerators(datamodel.Generators).
+	// 先添加配置（这会初始化数据库连接）
+	e.AddConfig(&cfg)
+
+	// 在 Use 之前先初始化数据库表（创建 GoAdmin 所需的表）
+	datamodel.InitDatabaseTables(e.SqliteConnection())
+
+	if err := e.AddGenerators(datamodel.Generators).
 		AddGenerator("user", datamodel.GetUserTable).
 		AddDisplayFilterXssJsFilter().
 		Use(r); err != nil {
 		panic(err)
 	}
 
+	// 初始化菜单
+	datamodel.InitMenu(e.SqliteConnection())
+	datamodel.InitDashboard(e.SqliteConnection())
+
 	r.Static("/uploads", "./uploads")
 
 	// 注册自定义页面 - 使用 GoAdmin 的 HTML 方法
+	// Dashboard 和系统配置
 	e.HTML("GET", "/admin/dashboard", datamodel.GetDashboardContent, false)
 	e.HTML("GET", "/admin/system/config", datamodel.GetSystemConfigPage, false)
+
+	// 网络模块 - IP 路由
+	e.HTML("GET", "/admin/network/route-table", datamodel.GetRouteTableContent, false)
+	e.HTML("GET", "/admin/network/static-route", datamodel.GetStaticRouteContent, false)
+
+	// 网络模块 - 诊断工具
+	e.HTML("GET", "/admin/network/ping", datamodel.GetPingContent, false)
+	e.HTML("GET", "/admin/network/traceroute", datamodel.GetTracerouteContent, false)
+	e.HTML("GET", "/admin/network/cable-test", datamodel.GetCableTestContent, false)
 
 	fmt.Println("=== GoAdmin 启动完成 ===")
 	fmt.Println("Admin UI: http://localhost:9033/admin")
