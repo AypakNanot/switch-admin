@@ -58,10 +58,32 @@ func InitMenu(conn db.Connection) {
 	conn.Exec("DELETE FROM goadmin_menu WHERE title = '系统配置'")
 	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理' OR title = '系统配置')")
 
-	// 分别检查各个主菜单是否已初始化
+	// 强制清除，确保图标可以更新
 	networkExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '网络管理' LIMIT 1")
+	if networkExists != nil && len(networkExists) > 0 {
+		networkId := networkExists[0]["id"].(int64)
+		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-sitemap' WHERE id = ?", networkId)
+		log.Println("更新网络管理菜单图标")
+	}
+
 	systemExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '系统配置' LIMIT 1")
+	if systemExists != nil && len(systemExists) > 0 {
+		systemId := systemExists[0]["id"].(int64)
+		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-cog' WHERE id = ?", systemId)
+		log.Println("更新系统配置菜单图标")
+	}
+
 	maintenanceExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
+	if maintenanceExists != nil && len(maintenanceExists) > 0 {
+		maintenanceId := maintenanceExists[0]["id"].(int64)
+		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-wrench' WHERE id = ?", maintenanceId)
+		log.Println("更新维护菜单图标")
+	}
+
+	// 分别检查各个主菜单是否已初始化
+	networkExists, _ = conn.Query("SELECT id FROM goadmin_menu WHERE title = '网络管理' LIMIT 1")
+	systemExists, _ = conn.Query("SELECT id FROM goadmin_menu WHERE title = '系统配置' LIMIT 1")
+	maintenanceExists, _ = conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
 
 	// 如果所有菜单都已初始化，直接返回
 	if (networkExists != nil && len(networkExists) > 0) &&
