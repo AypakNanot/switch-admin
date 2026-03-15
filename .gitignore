@@ -34,9 +34,20 @@ data/*.db-shm
 data/*.db-wal
 
 # Logs
+*.log
 logs/*.log
 
 # Build output
 dist/
+build/
 .claude
 uploads
+
+# Misc
+cookies.txt
+go_run.log
+*.bat
+*.cmd
+e2.png
+err-*.png
+*.png
