@@ -311,7 +311,7 @@ func InitConfigMenu(conn db.Connection) {
 	// 清除旧的配置菜单数据（以便重新初始化）
 	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '配置')")
 	conn.Exec("DELETE FROM goadmin_menu WHERE title = '配置'")
-	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '配置' OR parent_id IN (SELECT id FROM goadmin_menu WHERE title = '配置'))")
+	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title LIKE '%配置%' OR parent_id IN (SELECT id FROM goadmin_menu WHERE title LIKE '%配置%'))")
 
 	// 检查配置主菜单是否已存在
 	configExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '配置' LIMIT 1")
@@ -346,8 +346,8 @@ func InitConfigMenu(conn db.Connection) {
 		{"端口监测", "/config/port-monitor", "fa fa-desktop", 6},
 		{"VLAN", "/config/vlan", "fa fa-sitemap", 7},
 		{"MAC 地址表", "/config/mac-table", "fa fa-table", 8},
-		{"生成树", "/config/stp", "fa fa-project-diagram", 9},
-		{"ERPS", "/config/erps", "fa fa-circle-notch", 10},
+		{"生成树", "/config/stp", "fa fa-tree", 9},
+		{"ERPS", "/config/erps", "fa fa-retweet", 10},
 		{"PoE", "/config/poe", "fa fa-plug", 11},
 		{"端口镜像", "/config/port-mirror", "fa fa-clone", 12},
 		{"组播", "/config/multicast", "fa fa-rss", 13},
