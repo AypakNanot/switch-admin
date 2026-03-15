@@ -1,10 +1,8 @@
 package main
 
 import (
-	"io/ioutil"
+	"fmt"
 	"log"
-	"os"
-	"os/signal"
 	"time"
 
 	_ "github.com/GoAdminGroup/go-admin/adapter/gin"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/GoAdminGroup/go-admin/engine"
 	"switch-admin/internal/datamodel"
+	"switch-admin/internal/handler"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/template"
@@ -23,11 +22,46 @@ import (
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)
-	gin.DefaultWriter = ioutil.Discard
+	// gin.DefaultWriter = ioutil.Discard  // 注释掉以启用日志
 
-	r := gin.New()
-
+	// 主引擎用于 GoAdmin
+	r := gin.Default()
 	e := engine.Default()
+
+	sysHandler := handler.NewSystemHandler()
+
+	// 在 GoAdmin 之前注册 API 路由（直接注册到主路由器）
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, map[string]interface{}{"status": "ok"})
+	})
+	r.GET("/api/mode", sysHandler.GinAPIGetMode)
+	r.POST("/api/mode", sysHandler.GinAPISwitchMode)
+	r.GET("/api/system/config", func(c *gin.Context) {
+		currentMode, err := sysHandler.GetRunMode()
+		if err != nil {
+			currentMode = "mock"
+		}
+		modeDesc := "离线测试模式"
+		if currentMode == "switch" {
+			modeDesc = "交换机模式"
+		}
+		c.JSON(200, map[string]interface{}{
+			"code": 200,
+			"data": map[string]interface{}{
+				"mode":            currentMode,
+				"mode_description": modeDesc,
+				"database":        "SQLite3 (data/admin.db)",
+				"goadmin_version": "v1.2.26",
+			},
+		})
+	})
+	// 首页重定向到 Dashboard
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(302, "/admin")
+	})
+	r.GET("/admin", func(c *gin.Context) {
+		c.Redirect(302, "/admin/dashboard")
+	})
 
 	cfg := config.Config{
 		Env: config.EnvLocal,
@@ -40,7 +74,7 @@ func main() {
 				ConnMaxLifetime: time.Hour,
 			},
 		},
-		UrlPrefix: "admin",
+		UrlPrefix:           "admin",
 		Store: config.Store{
 			Path:   "./uploads",
 			Prefix: "uploads",
@@ -68,16 +102,19 @@ func main() {
 
 	r.Static("/uploads", "./uploads")
 
-	// 自定义页面 - Dashboard
-	e.HTML("GET", "/admin", datamodel.GetDashboardContent)
+	// 注册自定义页面 - 使用 GoAdmin 的 HTML 方法
+	e.HTML("GET", "/admin/dashboard", datamodel.GetDashboardContent, false)
+	e.HTML("GET", "/admin/system/config", datamodel.GetSystemConfigPage, false)
 
-	go func() {
-		_ = r.Run(":9033")
-	}()
+	fmt.Println("=== GoAdmin 启动完成 ===")
+	fmt.Println("Admin UI: http://localhost:9033/admin")
+	fmt.Println("API: http://localhost:9033/api/mode")
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
+	// 启动服务器
+	if err := r.Run(":9033"); err != nil {
+		log.Fatal("Server failed:", err)
+	}
+
 	log.Print("closing database connection")
 	e.SqliteConnection().Close()
 }

@@ -55,6 +55,34 @@ CGO_ENABLED=1 CC=gcc go build -o gin-admin.exe ./cmd/main.go
 
 启动后访问：http://localhost:9033/admin
 
+### API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/api/mode` | GET | 获取当前运行模式 |
+| `/api/mode` | POST | 切换运行模式 |
+| `/api/system/config` | GET | 获取系统配置 |
+
+### 模式切换示例
+
+```bash
+# 获取当前模式
+curl http://localhost:9033/api/mode
+
+# 切换到 mock 模式（离线测试模式）
+curl -X POST http://localhost:9033/api/mode \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"mock"}'
+
+# 切换到 switch 模式（交换机模式）
+curl -X POST http://localhost:9033/api/mode \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"switch"}'
+```
+
+详细 API 文档请参考：[docs/API.md](docs/API.md)
+
 默认账号密码请参考数据库中的初始数据。
 
 ## 功能模块
@@ -66,6 +94,14 @@ CGO_ENABLED=1 CC=gcc go build -o gin-admin.exe ./cmd/main.go
   - 端口状态概览（端口总数、活跃端口、Down 端口、端口利用率）
   - 端口状态列表
   - 系统详细信息
+- [x] 双模式架构
+  - 离线测试模式 (mock)：使用数据库模拟数据
+  - 交换机模式 (switch)：连接真实交换机硬件
+  - 支持运行时动态切换，无需重启
+- [x] 系统配置 API
+  - 模式切换 API：`POST /api/mode`
+  - 模式查询 API：`GET /api/mode`
+  - 系统配置查询：`GET /api/system/config`
 
 ### 计划实现
 

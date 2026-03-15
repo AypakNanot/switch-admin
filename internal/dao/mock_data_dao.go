@@ -1,9 +1,10 @@
 package dao
 
 import (
+	"database/sql"
 	"time"
 
-	"github.com/GoAdminGroup/go-admin/modules/db"
+	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/sqlite"
 	"switch-admin/internal/model"
 )
 
@@ -17,16 +18,25 @@ func NewMockDataDAO() *MockDataDAO {
 
 // GetAllMockPorts 获取所有模拟端口
 func (d *MockDataDAO) GetAllMockPorts() ([]model.MockPort, error) {
-	rows, err := db.Table("mock_port").
-		OrderBy("port_name", "ASC").
-		All()
+	数据库 := getDB()
+	defer 数据库.Close()
+
+	rows, err := 数据库.Query("SELECT id, port_name, admin_status, link_status, speed, duplex, description, rx_bytes, tx_bytes, rx_packets, tx_packets, rx_errors, tx_errors, updated_at FROM mock_port ORDER BY port_name ASC")
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var ports []model.MockPort
-	for _, row := range rows {
-		port := d.rowToMockPort(row)
+	for rows.Next() {
+		var port model.MockPort
+		var updatedAt string
+		err := rows.Scan(&port.ID, &port.PortName, &port.AdminStatus, &port.LinkStatus, &port.Speed, &port.Duplex, &port.Description,
+			&port.RxBytes, &port.TxBytes, &port.RxPackets, &port.TxPackets, &port.RxErrors, &port.TxErrors, &updatedAt)
+		if err != nil {
+			return nil, err
+		}
+		port.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
 		ports = append(ports, port)
 	}
 
@@ -35,197 +45,108 @@ func (d *MockDataDAO) GetAllMockPorts() ([]model.MockPort, error) {
 
 // GetMockPortByName 根据名称获取模拟端口
 func (d *MockDataDAO) GetMockPortByName(portName string) (*model.MockPort, error) {
-	res, err := db.Table("mock_port").
-		Where("port_name", "=", portName).
-		First()
+	数据库 := getDB()
+	defer 数据库.Close()
+
+	var port model.MockPort
+	var updatedAt string
+	err := 数据库.QueryRow("SELECT id, port_name, admin_status, link_status, speed, duplex, description, rx_bytes, tx_bytes, rx_packets, tx_packets, rx_errors, tx_errors, updated_at FROM mock_port WHERE port_name = ?", portName).Scan(
+		&port.ID, &port.PortName, &port.AdminStatus, &port.LinkStatus, &port.Speed, &port.Duplex, &port.Description,
+		&port.RxBytes, &port.TxBytes, &port.RxPackets, &port.TxPackets, &port.RxErrors, &port.TxErrors, &updatedAt)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrConfigNotFound
+		}
 		return nil, err
 	}
-
-	if res == nil {
-		return nil, ErrConfigNotFound
-	}
-
-	port := d.rowToMockPort(res)
+	port.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
 	return &port, nil
 }
 
 // UpdateMockPortAdminStatus 更新端口管理状态
 func (d *MockDataDAO) UpdateMockPortAdminStatus(portName string, enabled bool) error {
+	数据库 := getDB()
+	defer 数据库.Close()
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 	enabledInt := 0
 	if enabled {
 		enabledInt = 1
 	}
 
-	_, err := db.Table("mock_port").
-		Where("port_name", "=", portName).
-		Update(map[string]interface{}{
-			"admin_status": enabledInt,
-			"updated_at":   now,
-		})
+	_, err := 数据库.Exec("UPDATE mock_port SET admin_status = ?, updated_at = ? WHERE port_name = ?",
+		enabledInt, now, portName)
 	return err
 }
 
 // UpdateMockPortLinkStatus 更新端口链路状态
 func (d *MockDataDAO) UpdateMockPortLinkStatus(portName string, up bool) error {
+	数据库 := getDB()
+	defer 数据库.Close()
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 	upInt := 0
 	if up {
 		upInt = 1
 	}
 
-	_, err := db.Table("mock_port").
-		Where("port_name", "=", portName).
-		Update(map[string]interface{}{
-			"link_status": upInt,
-			"updated_at":  now,
-		})
+	_, err := 数据库.Exec("UPDATE mock_port SET link_status = ?, updated_at = ? WHERE port_name = ?",
+		upInt, now, portName)
 	return err
 }
 
 // ClearMockPortStats 清零单个端口统计
 func (d *MockDataDAO) ClearMockPortStats(portName string) error {
+	数据库 := getDB()
+	defer 数据库.Close()
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 
-	_, err := db.Table("mock_port").
-		Where("port_name", "=", portName).
-		Update(map[string]interface{}{
-			"rx_bytes":   0,
-			"tx_bytes":   0,
-			"rx_packets": 0,
-			"tx_packets": 0,
-			"rx_errors":  0,
-			"tx_errors":  0,
-			"updated_at": now,
-		})
+	_, err := 数据库.Exec("UPDATE mock_port SET rx_bytes = 0, tx_bytes = 0, rx_packets = 0, tx_packets = 0, rx_errors = 0, tx_errors = 0, updated_at = ? WHERE port_name = ?",
+		now, portName)
 	return err
 }
 
 // ClearAllMockPortsStats 清零所有端口统计
 func (d *MockDataDAO) ClearAllMockPortsStats() error {
+	数据库 := getDB()
+	defer 数据库.Close()
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 
-	_, err := db.Table("mock_port").
-		Update(map[string]interface{}{
-			"rx_bytes":   0,
-			"tx_bytes":   0,
-			"rx_packets": 0,
-			"tx_packets": 0,
-			"rx_errors":  0,
-			"tx_errors":  0,
-			"updated_at": now,
-		})
+	_, err := 数据库.Exec("UPDATE mock_port SET rx_bytes = 0, tx_bytes = 0, rx_packets = 0, tx_packets = 0, rx_errors = 0, tx_errors = 0, updated_at = ?",
+		now)
 	return err
 }
 
 // GetMockSystemInfo 获取模拟系统信息
 func (d *MockDataDAO) GetMockSystemInfo() (*model.MockSystemInfo, error) {
-	res, err := db.Table("mock_system_info").
-		Take(1).
-		First()
+	数据库 := getDB()
+	defer 数据库.Close()
+
+	var info model.MockSystemInfo
+	var bootTime string
+	err := 数据库.QueryRow("SELECT id, model, serial_number, mac_address, software_version, hardware_version, uptime_seconds, boot_time FROM mock_system_info LIMIT 1").Scan(
+		&info.ID, &info.Model, &info.SerialNumber, &info.MACAddress, &info.SoftwareVersion, &info.HardwareVersion,
+		&info.UptimeSeconds, &bootTime)
 	if err != nil {
-		return nil, ErrConfigNotFound
+		if err == sql.ErrNoRows {
+			return nil, ErrConfigNotFound
+		}
+		return nil, err
 	}
-
-	if res == nil {
-		return nil, ErrConfigNotFound
-	}
-
-	return d.rowToMockSystemInfo(res), nil
+	info.BootTime, _ = time.Parse("2006-01-02 15:04:05", bootTime)
+	return &info, nil
 }
 
 // UpdateMockSystemInfoUptime 更新系统运行时间
 func (d *MockDataDAO) UpdateMockSystemInfoUptime(uptimeSeconds int64) error {
+	数据库 := getDB()
+	defer 数据库.Close()
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 
-	_, err := db.Table("mock_system_info").
-		Where("id", "=", 1).
-		Update(map[string]interface{}{
-			"uptime_seconds": uptimeSeconds,
-			"updated_at":     now,
-		})
+	_, err := 数据库.Exec("UPDATE mock_system_info SET uptime_seconds = ?, updated_at = ? WHERE id = ?",
+		uptimeSeconds, now, 1)
 	return err
-}
-
-// rowToMockPort 将数据库行转换为 MockPort
-func (d *MockDataDAO) rowToMockPort(row map[string]interface{}) model.MockPort {
-	port := model.MockPort{
-		ID:          int64(row["id"].(int)),
-		PortName:    getString(row["port_name"]),
-		AdminStatus: row["admin_status"].(int) == 1,
-		LinkStatus:  row["link_status"].(int) == 1,
-		Speed:       getString(row["speed"]),
-		Duplex:      getString(row["duplex"]),
-		Description: getString(row["description"]),
-		RxBytes:     getUint64(row["rx_bytes"]),
-		TxBytes:     getUint64(row["tx_bytes"]),
-		RxPackets:   getUint64(row["rx_packets"]),
-		TxPackets:   getUint64(row["tx_packets"]),
-		RxErrors:    getUint64(row["rx_errors"]),
-		TxErrors:    getUint64(row["tx_errors"]),
-	}
-
-	if updatedAt, ok := row["updated_at"].(string); ok {
-		port.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
-	}
-
-	return port
-}
-
-// rowToMockSystemInfo 将数据库行转换为 MockSystemInfo
-func (d *MockDataDAO) rowToMockSystemInfo(row map[string]interface{}) *model.MockSystemInfo {
-	info := &model.MockSystemInfo{
-		ID:              int64(row["id"].(int)),
-		Model:           getString(row["model"]),
-		SerialNumber:    getString(row["serial_number"]),
-		MACAddress:      getString(row["mac_address"]),
-		SoftwareVersion: getString(row["software_version"]),
-		HardwareVersion: getString(row["hardware_version"]),
-		UptimeSeconds:   int64(row["uptime_seconds"].(int)),
-	}
-
-	if bootTime, ok := row["boot_time"].(string); ok {
-		info.BootTime, _ = time.Parse("2006-01-02 15:04:05", bootTime)
-	}
-
-	return info
-}
-
-// 辅助函数
-func getString(v interface{}) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return ""
-}
-
-func getInt(v interface{}) int {
-	if i, ok := v.(int); ok {
-		return i
-	}
-	return 0
-}
-
-func getInt64(v interface{}) int64 {
-	if i, ok := v.(int64); ok {
-		return i
-	}
-	if i, ok := v.(int); ok {
-		return int64(i)
-	}
-	return 0
-}
-
-func getUint64(v interface{}) uint64 {
-	if u, ok := v.(uint64); ok {
-		return u
-	}
-	if i, ok := v.(int64); ok {
-		return uint64(i)
-	}
-	if i, ok := v.(int); ok {
-		return uint64(i)
-	}
-	return 0
 }
