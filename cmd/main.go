@@ -31,6 +31,7 @@ func main() {
 	sysHandler := handler.NewSystemHandler()
 	routeHandler := handler.NewRouteHandler()
 	diagnosticHandler := handler.NewDiagnosticHandler()
+	maintenanceHandler := handler.NewMaintenanceHandler()
 
 	// 在 GoAdmin 之前注册 API 路由（直接注册到主路由器）
 	r.GET("/health", func(c *gin.Context) {
@@ -75,6 +76,74 @@ func main() {
 	r.GET("/api/v1/diagnostic/traceroute/:task_id", diagnosticHandler.GetTracerouteTaskResult)
 	r.POST("/api/v1/diagnostic/traceroute", diagnosticHandler.CreateTracerouteTask)
 	r.DELETE("/api/v1/diagnostic/traceroute/:task_id", diagnosticHandler.DeleteTracerouteTask)
+
+	// 维护模块 API - 重启/保存
+	r.POST("/api/v1/system/save-config", maintenanceHandler.SaveConfig)
+	r.POST("/api/v1/system/reboot", maintenanceHandler.RebootSwitch)
+	r.POST("/api/v1/system/factory-reset", maintenanceHandler.FactoryReset)
+
+	// 维护模块 API - 系统配置
+	r.GET("/api/v1/system/config", maintenanceHandler.GetSystemConfig)
+	r.PUT("/api/v1/system/network", maintenanceHandler.UpdateNetworkConfig)
+	r.PUT("/api/v1/system/temperature", maintenanceHandler.UpdateTemperatureConfig)
+	r.PUT("/api/v1/system/info", maintenanceHandler.UpdateDeviceInfo)
+	r.PUT("/api/v1/system/datetime", maintenanceHandler.UpdateDateTime)
+
+	// 维护模块 API - 加载配置
+	r.GET("/api/v1/config/files", maintenanceHandler.GetConfigFiles)
+	r.POST("/api/v1/config/load", maintenanceHandler.LoadConfig)
+
+	// 维护模块 API - 文件管理
+	r.GET("/api/v1/files", maintenanceHandler.GetFiles)
+	r.POST("/api/v1/files/upload", maintenanceHandler.UploadFile)
+	r.POST("/api/v1/files/firmware", maintenanceHandler.UploadFirmware)
+	r.GET("/api/v1/files/download", maintenanceHandler.DownloadFile)
+	r.DELETE("/api/v1/files", maintenanceHandler.DeleteFiles)
+
+	// 维护模块 API - 日志管理
+	r.GET("/api/v1/logs", maintenanceHandler.GetLogs)
+	r.DELETE("/api/v1/logs", maintenanceHandler.ClearLogs)
+
+	// 维护模块 API - SNMP 配置
+	r.GET("/api/v1/snmp/config", maintenanceHandler.GetSNMPConfig)
+	r.PUT("/api/v1/snmp/config", maintenanceHandler.UpdateSNMPConfig)
+	r.GET("/api/v1/snmp/communities", maintenanceHandler.GetSNMPCommunity)
+	r.POST("/api/v1/snmp/communities", maintenanceHandler.AddSNMPCommunity)
+	r.DELETE("/api/v1/snmp/communities/:name", maintenanceHandler.DeleteSNMPCommunity)
+
+	// 维护模块 API - SNMP Trap 配置
+	r.GET("/api/v1/snmp/trap/config", maintenanceHandler.GetSNMPTrapConfig)
+	r.PUT("/api/v1/snmp/trap/config", maintenanceHandler.UpdateSNMPTrapConfig)
+	r.GET("/api/v1/snmp/trap/hosts", maintenanceHandler.GetSNMPTrapHosts)
+	r.POST("/api/v1/snmp/trap/hosts", maintenanceHandler.AddSNMPTrapHost)
+	r.DELETE("/api/v1/snmp/trap/hosts/:id", maintenanceHandler.DeleteSNMPTrapHost)
+	r.POST("/api/v1/snmp/trap/hosts/:id/test", maintenanceHandler.TestSNMPTrap)
+
+	// 维护模块 API - 安全防护 - 蠕虫攻击防护
+	r.GET("/api/v1/security/worm/rules", maintenanceHandler.GetWormRules)
+	r.POST("/api/v1/security/worm/rules", maintenanceHandler.AddWormRule)
+	r.PUT("/api/v1/security/worm/rules/:id", maintenanceHandler.UpdateWormRule)
+	r.DELETE("/api/v1/security/worm/rules", maintenanceHandler.DeleteWormRules)
+	r.POST("/api/v1/security/worm/clear-stats", maintenanceHandler.ClearWormStats)
+
+	// 维护模块 API - 安全防护 - DDoS 攻击防护
+	r.GET("/api/v1/security/ddos/config", maintenanceHandler.GetDDoSConfig)
+	r.PUT("/api/v1/security/ddos/config", maintenanceHandler.UpdateDDoSConfig)
+
+	// 维护模块 API - 安全防护 - ARP 攻击防护
+	r.GET("/api/v1/security/arp/config", maintenanceHandler.GetARPConfig)
+	r.PUT("/api/v1/security/arp/config", maintenanceHandler.UpdateARPConfig)
+
+	// 维护模块 API - 用户管理
+	r.GET("/api/v1/users", maintenanceHandler.GetUsers)
+	r.POST("/api/v1/users", maintenanceHandler.CreateUser)
+	r.PUT("/api/v1/users/:username", maintenanceHandler.UpdateUser)
+	r.DELETE("/api/v1/users", maintenanceHandler.DeleteUsers)
+
+	// 维护模块 API - 当前会话
+	r.GET("/api/v1/sessions", maintenanceHandler.GetSessions)
+	r.DELETE("/api/v1/sessions/:session_id", maintenanceHandler.DeleteSession)
+
 	// 首页重定向到 Dashboard
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "/admin")
@@ -144,6 +213,20 @@ func main() {
 	e.HTML("GET", "/admin/network/ping", datamodel.GetPingContent, false)
 	e.HTML("GET", "/admin/network/traceroute", datamodel.GetTracerouteContent, false)
 	e.HTML("GET", "/admin/network/cable-test", datamodel.GetCableTestContent, false)
+
+	// 维护模块
+	e.HTML("GET", "/admin/maintenance/reboot-save", datamodel.GetRebootSaveContent, false)
+	e.HTML("GET", "/admin/maintenance/users", datamodel.GetUsersContent, false)
+	e.HTML("GET", "/admin/maintenance/system-config", datamodel.GetMaintenanceSystemConfigContent, false)
+	e.HTML("GET", "/admin/maintenance/load-config", datamodel.GetLoadConfigContent, false)
+	e.HTML("GET", "/admin/maintenance/files", datamodel.GetFilesContent, false)
+	e.HTML("GET", "/admin/maintenance/logs", datamodel.GetLogsContent, false)
+	e.HTML("GET", "/admin/maintenance/snmp", datamodel.GetSNMPContent, false)
+	e.HTML("GET", "/admin/maintenance/snmp-trap", datamodel.GetSNMPTrapContent, false)
+	e.HTML("GET", "/admin/maintenance/worm-protection", datamodel.GetWormProtectionContent, false)
+	e.HTML("GET", "/admin/maintenance/ddos-protection", datamodel.GetDDoSProtectionContent, false)
+	e.HTML("GET", "/admin/maintenance/arp-protection", datamodel.GetARPProtectionContent, false)
+	e.HTML("GET", "/admin/maintenance/sessions", datamodel.GetSessionsContent, false)
 
 	fmt.Println("=== GoAdmin 启动完成 ===")
 	fmt.Println("Admin UI: http://localhost:9033/admin")
