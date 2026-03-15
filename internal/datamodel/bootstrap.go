@@ -51,80 +51,44 @@ func InitDatabaseTables(conn db.Connection) {
 
 // InitMenu 初始化网络管理和维护菜单
 func InitMenu(conn db.Connection) {
-	// 清除旧的菜单数据（以便重新初始化）
+	// 强制清除旧的菜单数据（以便重新初始化）
+	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理' OR title = '系统配置')")
 	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理')")
 	conn.Exec("DELETE FROM goadmin_menu WHERE title = '网络管理'")
 	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '系统配置')")
 	conn.Exec("DELETE FROM goadmin_menu WHERE title = '系统配置'")
-	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理' OR title = '系统配置')")
 
-	// 强制清除，确保图标可以更新
-	networkExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '网络管理' LIMIT 1")
-	if networkExists != nil && len(networkExists) > 0 {
-		networkId := networkExists[0]["id"].(int64)
-		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-sitemap' WHERE id = ?", networkId)
-		log.Println("更新网络管理菜单图标")
-	}
-
-	systemExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '系统配置' LIMIT 1")
-	if systemExists != nil && len(systemExists) > 0 {
-		systemId := systemExists[0]["id"].(int64)
-		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-cog' WHERE id = ?", systemId)
-		log.Println("更新系统配置菜单图标")
-	}
-
-	maintenanceExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
-	if maintenanceExists != nil && len(maintenanceExists) > 0 {
-		maintenanceId := maintenanceExists[0]["id"].(int64)
-		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-wrench' WHERE id = ?", maintenanceId)
-		log.Println("更新维护菜单图标")
-	}
-
-	// 分别检查各个主菜单是否已初始化
-	networkExists, _ = conn.Query("SELECT id FROM goadmin_menu WHERE title = '网络管理' LIMIT 1")
-	systemExists, _ = conn.Query("SELECT id FROM goadmin_menu WHERE title = '系统配置' LIMIT 1")
-	maintenanceExists, _ = conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
-
-	// 如果所有菜单都已初始化，直接返回
-	if (networkExists != nil && len(networkExists) > 0) &&
-		(systemExists != nil && len(systemExists) > 0) &&
-		(maintenanceExists != nil && len(maintenanceExists) > 0) {
-		log.Println("菜单已初始化，跳过")
-		return
-	}
+	// 强制清除配置菜单数据
+	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '配置')")
+	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '配置')")
+	conn.Exec("DELETE FROM goadmin_menu WHERE title = '配置'")
 
 	var networkId int64
 	var systemId int64
 	var maintenanceId int64
 
-	// 插入网络管理主菜单（如果不存在）
-	if networkExists == nil || len(networkExists) == 0 {
-		networkResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '网络管理', '', 'fa fa-network-wired', 1)")
-		if err != nil {
-			log.Printf("插入网络管理菜单失败：%v", err)
-		} else {
-			networkId, _ = networkResult.LastInsertId()
-			log.Println("插入网络管理主菜单")
-		}
+	// 插入网络管理主菜单
+	networkResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '网络管理', '', 'fa fa-sitemap', 1)")
+	if err != nil {
+		log.Printf("插入网络管理菜单失败：%v", err)
 	} else {
-		networkId = networkExists[0]["id"].(int64)
+		networkId, _ = networkResult.LastInsertId()
+		log.Println("插入网络管理主菜单，图标：fa fa-sitemap")
 	}
 
-	// 插入系统配置主菜单（如果不存在）
-	if systemExists == nil || len(systemExists) == 0 {
-		systemResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '系统配置', '', 'fa fa-cog', 2)")
-		if err != nil {
-			log.Printf("插入系统配置菜单失败：%v", err)
-		} else {
-			systemId, _ = systemResult.LastInsertId()
-			log.Println("插入系统配置主菜单")
-		}
+	// 插入系统配置主菜单
+	systemResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '系统配置', '', 'fa fa-cog', 2)")
+	if err != nil {
+		log.Printf("插入系统配置菜单失败：%v", err)
 	} else {
-		systemId = systemExists[0]["id"].(int64)
+		systemId, _ = systemResult.LastInsertId()
+		log.Println("插入系统配置主菜单，图标：fa fa-cog")
 	}
 
-	// 插入维护主菜单（如果不存在）
+	// 检查维护主菜单是否已存在
+	maintenanceExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
 	if maintenanceExists == nil || len(maintenanceExists) == 0 {
+		// 插入维护主菜单
 		maintenanceResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '维护', '', 'fa fa-wrench', 3)")
 		if err != nil {
 			log.Printf("插入维护菜单失败：%v", err)
@@ -134,6 +98,9 @@ func InitMenu(conn db.Connection) {
 		}
 	} else {
 		maintenanceId = maintenanceExists[0]["id"].(int64)
+		// 更新维护菜单图标
+		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-wrench' WHERE id = ?", maintenanceId)
+		log.Println("更新维护菜单图标")
 	}
 
 	// 插入子菜单（只插入不存在的）
