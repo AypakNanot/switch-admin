@@ -51,6 +51,13 @@ func InitDatabaseTables(conn db.Connection) {
 
 // InitMenu 初始化网络管理和维护菜单
 func InitMenu(conn db.Connection) {
+	// 清除旧的菜单数据（以便重新初始化）
+	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理')")
+	conn.Exec("DELETE FROM goadmin_menu WHERE title = '网络管理'")
+	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '系统配置')")
+	conn.Exec("DELETE FROM goadmin_menu WHERE title = '系统配置'")
+	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理' OR title = '系统配置')")
+
 	// 分别检查各个主菜单是否已初始化
 	networkExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '网络管理' LIMIT 1")
 	systemExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '系统配置' LIMIT 1")
@@ -116,11 +123,11 @@ func InitMenu(conn db.Connection) {
 		order    int
 	}{
 		// 网络管理子菜单
-		{networkId, "IPv4 路由表", "/network/route-table", "fa fa-table", 1},
-		{networkId, "IPv4 静态路由", "/network/static-route", "fa fa-route", 2},
-		{networkId, "Ping 诊断", "/network/ping", "fa fa-pingpong-paddle", 3},
-		{networkId, "Traceroute 诊断", "/network/traceroute", "fa fa-share-alt", 4},
-		{networkId, "虚拟电缆检测", "/network/cable-test", "fa fa-plug", 5},
+		{networkId, "IPv4 路由表", "/network/route-table", "fa fa-list-alt", 1},
+		{networkId, "IPv4 静态路由", "/network/static-route", "fa fa-road", 2},
+		{networkId, "Ping 诊断", "/network/ping", "fa fa-exchange", 3},
+		{networkId, "Traceroute 诊断", "/network/traceroute", "fa fa-random", 4},
+		{networkId, "虚拟电缆检测", "/network/cable-test", "fa fa-wrench", 5},
 		// 系统配置子菜单
 		{systemId, "系统配置", "/system/config", "fa fa-wrench", 1},
 		// 维护子菜单
@@ -301,6 +308,11 @@ func InitMaintenanceMenu(conn db.Connection) {
 
 // InitConfigMenu 初始化配置模块菜单
 func InitConfigMenu(conn db.Connection) {
+	// 清除旧的配置菜单数据（以便重新初始化）
+	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '配置')")
+	conn.Exec("DELETE FROM goadmin_menu WHERE title = '配置'")
+	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '配置' OR parent_id IN (SELECT id FROM goadmin_menu WHERE title = '配置'))")
+
 	// 检查配置主菜单是否已存在
 	configExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '配置' LIMIT 1")
 
@@ -326,21 +338,21 @@ func InitConfigMenu(conn db.Connection) {
 		order int
 	}{
 		// 第一阶段：核心基础功能
-		{"端口状态", "/config/ports", "fa fa-ethernet", 1},
-		{"链路聚合", "/config/link-aggregation", "fa fa-link", 2},
-		{"风暴控制", "/config/storm-control", "fa fa-wind", 3},
-		{"流量控制", "/config/flow-control", "fa fa-tachometer-alt", 4},
-		{"端口隔离", "/config/port-isolation", "fa fa-columns", 5},
-		{"端口监测", "/config/port-monitor", "fa fa-eye", 6},
-		{"VLAN", "/config/vlan", "fa fa-network-wired", 7},
-		{"MAC 地址表", "/config/mac-table", "fa fa-address-book", 8},
-		{"生成树", "/config/stp", "fa fa-sitemap", 9},
-		{"ERPS", "/config/erps", "fa fa-ring", 10},
-		{"PoE", "/config/poe", "fa fa-bolt", 11},
-		{"端口镜像", "/config/port-mirror", "fa fa-copy", 12},
-		{"组播", "/config/multicast", "fa fa-bullhorn", 13},
-		{"资源", "/config/resource", "fa fa-hdd", 14},
-		{"堆叠", "/config/stack", "fa fa-layer-group", 15},
+		{"端口状态", "/config/ports", "fa fa-list", 1},
+		{"链路聚合", "/config/link-aggregation", "fa fa-chain", 2},
+		{"风暴控制", "/config/storm-control", "fa fa-bolt", 3},
+		{"流量控制", "/config/flow-control", "fa fa-tachometer", 4},
+		{"端口隔离", "/config/port-isolation", "fa fa-th", 5},
+		{"端口监测", "/config/port-monitor", "fa fa-desktop", 6},
+		{"VLAN", "/config/vlan", "fa fa-sitemap", 7},
+		{"MAC 地址表", "/config/mac-table", "fa fa-table", 8},
+		{"生成树", "/config/stp", "fa fa-project-diagram", 9},
+		{"ERPS", "/config/erps", "fa fa-circle-notch", 10},
+		{"PoE", "/config/poe", "fa fa-plug", 11},
+		{"端口镜像", "/config/port-mirror", "fa fa-clone", 12},
+		{"组播", "/config/multicast", "fa fa-rss", 13},
+		{"资源", "/config/resource", "fa fa-microchip", 14},
+		{"堆叠", "/config/stack", "fa fa-cubes", 15},
 	}
 
 	for _, menu := range subMenus {
