@@ -1,11 +1,23 @@
 @echo off
 cd /d %~dp0
+set GOROOT=D:\dev-env\go1.26.1
+set PATH=%GOROOT%\bin;%PATH%
+
 echo Stopping existing processes...
 taskkill /F /IM switch-admin.exe 2>nul
 
+echo Cleaning old build files...
+del /f /q switch-admin.exe 2>nul
+del /f /q gin-admin.exe 2>nul
+del /f /q switch-admin-*.exe 2>nul
+if exist dist rmdir /s /q dist 2>nul
+if exist build rmdir /s /q build 2>nul
+if exist data\bak rmdir /s /q data\bak 2>nul
+
 echo Building switch-admin...
 set CGO_ENABLED=1
-go build -o switch-admin.exe ./cmd/main.go
+set GOARCH=amd64
+go build -ldflags="-s -w" -o switch-admin.exe ./cmd/main.go
 if errorlevel 1 (
     echo Build failed!
     exit /b 1

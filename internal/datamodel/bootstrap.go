@@ -3,6 +3,7 @@ package datamodel
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/GoAdminGroup/go-admin/engine"
 	"github.com/GoAdminGroup/go-admin/modules/db"
@@ -31,16 +32,22 @@ func InitDatabaseTables(conn db.Connection) {
 		return
 	}
 
-	// 读取并执行初始化 SQL 脚本
-	sqlBytes, err := os.ReadFile("data/init.sql")
+	// 优先使用外部 data/init.sql 文件（如果存在）
+	var sqlContent string
+	externalPath := filepath.Join("data", "init.sql")
+	sqlBytes, err := os.ReadFile(externalPath)
 	if err != nil {
-		log.Printf("读取初始化 SQL 脚本失败：%v", err)
-		return
+		// 外部文件不存在，使用嵌入的 SQL
+		log.Printf("外部初始化文件不存在 (%v)，使用内置 SQL", err)
+		sqlContent = GetEmbeddedInitSQL()
+	} else {
+		// 使用外部文件
+		log.Printf("使用外部初始化文件：%s", externalPath)
+		sqlContent = string(sqlBytes)
 	}
 
-	// 执行 SQL 脚本（按分号分割）
-	statements := string(sqlBytes)
-	_, err = conn.Exec(statements)
+	// 执行 SQL 脚本
+	_, err = conn.Exec(sqlContent)
 	if err != nil {
 		log.Printf("执行初始化 SQL 失败：%v", err)
 		return
