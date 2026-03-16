@@ -12,7 +12,7 @@
 *.out
 
 # Dependency directories
-vendor/
+# vendor/ - Keep vendor directory for offline development
 
 # Go workspace file
 go.work

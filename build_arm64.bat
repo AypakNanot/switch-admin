@@ -22,7 +22,7 @@ echo   GOARCH=%GOARCH%
 echo   CGO_ENABLED=%CGO_ENABLED%
 echo.
 
-%D:\dev-env\go1.26.1\bin\go.exe% build -ldflags="-s -w" -o switch-admin-arm64 ./cmd/main.go
+%D:\dev-env\go1.26.1\bin\go.exe% build -mod=vendor -ldflags="-s -w" -o switch-admin-arm64 ./cmd/main.go
 
 if errorlevel 1 (
     echo.
