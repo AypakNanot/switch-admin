@@ -8,6 +8,7 @@ import (
 	_ "github.com/GoAdminGroup/go-admin/adapter/gin"
 	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/sqlite"
 	_ "github.com/GoAdminGroup/themes/sword"
+	_ "modernc.org/sqlite"
 
 	"github.com/GoAdminGroup/go-admin/engine"
 	"switch-admin/internal/datamodel"

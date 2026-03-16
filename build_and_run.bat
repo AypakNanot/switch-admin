@@ -15,9 +15,9 @@ if exist build rmdir /s /q build 2>nul
 if exist data\bak rmdir /s /q data\bak 2>nul
 
 echo Building switch-admin...
-set CGO_ENABLED=1
+set CGO_ENABLED=0
 set GOARCH=amd64
-go build -ldflags="-s -w" -o switch-admin.exe ./cmd/main.go
+go build -mod=mod -ldflags="-s -w" -o switch-admin.exe ./cmd/main.go
 if errorlevel 1 (
     echo Build failed!
     exit /b 1

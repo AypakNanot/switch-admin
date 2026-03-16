@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/sqlite"
+	_ "modernc.org/sqlite"
 	"switch-admin/internal/model"
 )
 
