@@ -1,7 +1,12 @@
 @echo off
 cd /d %~dp0
-set GOROOT=D:\dev-env\go1.26.1
-set PATH=%GOROOT%\bin;%PATH%
+
+rem 动态查找 Go 路径
+where go >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 未找到 Go，请确保已安装并添加到 PATH
+    exit /b 1
+)
 
 echo Stopping existing processes...
 taskkill /F /IM switch-admin.exe 2>nul

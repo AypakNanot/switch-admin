@@ -7,6 +7,13 @@ echo 交叉编译 switch-admin (Linux ARM64)
 echo ========================================
 echo.
 
+rem 动态查找 Go 路径
+where go >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 未找到 Go，请确保已安装并添加到 PATH
+    exit /b 1
+)
+
 echo 设置环境变量...
 set GOOS=linux
 set GOARCH=arm64
@@ -22,7 +29,7 @@ echo   GOARCH=%GOARCH%
 echo   CGO_ENABLED=%CGO_ENABLED%
 echo.
 
-%D:\dev-env\go1.26.1\bin\go.exe% build -mod=vendor -ldflags="-s -w" -o switch-admin-arm64 ./cmd/main.go
+go build -mod=vendor -ldflags="-s -w" -o switch-admin-arm64 ./cmd/main.go
 
 if errorlevel 1 (
     echo.
