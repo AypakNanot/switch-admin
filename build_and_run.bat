@@ -8,6 +8,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
+rem 清除 GOPATH 环境变量，强制使用 Go Modules 模式
+set GOPATH=
+
 echo Stopping existing processes...
 taskkill /F /IM switch-admin.exe 2>nul
 
