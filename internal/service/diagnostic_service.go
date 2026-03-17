@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
 	"time"
 
 	"switch-admin/internal/model"
+	"switch-admin/internal/service/mode"
 )
 
 // DiagnosticService 网络诊断服务
@@ -18,6 +20,7 @@ type DiagnosticService struct {
 	cableTasks      map[string]string
 	cableResults    map[string]*model.CableTestResult
 	mu              sync.RWMutex
+	modeResolver    *mode.ModeResolver
 }
 
 var diagnosticService *DiagnosticService
@@ -33,6 +36,9 @@ func GetDiagnosticService() *DiagnosticService {
 			traceResults: make(map[string]*model.TracerouteResponse),
 			cableTasks:   make(map[string]string),
 			cableResults: make(map[string]*model.CableTestResult),
+			modeResolver: mode.NewModeResolver(mode.ModeResolverConfig{
+				InitialMode: mode.ModeMock,
+			}),
 		}
 		go diagnosticService.cleanupRoutine()
 	})
@@ -87,80 +93,45 @@ func (s *DiagnosticService) CreatePingTask(req model.PingRequest) (string, error
 	return taskID, nil
 }
 
-// executePing 执行 Ping（Mock 实现）
+// executePing 执行 Ping（使用 Provider 模式）
 func (s *DiagnosticService) executePing(taskID string, req model.PingRequest) {
-	time.Sleep(100 * time.Millisecond) // 模拟延迟
+	// 通过 ModeResolver 获取 Provider
+	pingProvider := s.modeResolver.GetPingProvider()
 
-	results := make([]model.PingResult, 0, req.Count)
-	received := 0
-	var minTime, maxTime float64 = 9999, 0
-	var totalTime float64 = 0
-
-	rand.Seed(time.Now().UnixNano())
-
-	for i := 1; i <= req.Count; i++ {
-		// 模拟：80% 概率成功
-		success := rand.Float64() < 0.8
-		if success {
-			// 模拟延迟 1-50ms
-			latency := 1 + rand.Float64()*49
-			results = append(results, model.PingResult{
-				Seq:    i,
-				Time:   fmt.Sprintf("%.2fms", latency),
-				TTL:    64,
-				Status: "success",
-			})
-			received++
-			totalTime += latency
-			if latency < minTime {
-				minTime = latency
-			}
-			if latency > maxTime {
-				maxTime = latency
-			}
-		} else {
-			results = append(results, model.PingResult{
-				Seq:    i,
-				Time:   "*",
-				TTL:    0,
-				Status: "timeout",
-			})
-		}
-		time.Sleep(time.Duration(req.Interval) * time.Second)
-	}
-
-	lossRate := float64(req.Count-received) / float64(req.Count) * 100
-	avgTime := 0.0
-	if received > 0 {
-		avgTime = totalTime / float64(received)
-	}
-
-	response := &model.PingTaskResponse{
-		TaskID:  taskID,
-		Status:  "completed",
-		Target:  req.Target,
-		VrfID:   req.VrfID,
-		Results: results,
-		Statistics: model.PingStatistics{
-			Sent:     req.Count,
-			Received: received,
-			LossRate: fmt.Sprintf("%.0f%%", lossRate),
-			MinTime:  fmt.Sprintf("%.2fms", minTime),
-			AvgTime:  fmt.Sprintf("%.2fms", avgTime),
-			MaxTime:  fmt.Sprintf("%.2fms", maxTime),
-		},
-	}
-
-	if received == 0 {
-		response.Error = "Destination Host Unreachable"
-	}
+	// 执行 Ping
+	response, err := pingProvider.ExecutePing(context.Background(), req)
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err != nil {
+		// 执行失败
+		s.pingResults[taskID] = &model.PingTaskResponse{
+			TaskID:  taskID,
+			Status:  "failed",
+			Target:  req.Target,
+			VrfID:   req.VrfID,
+			Error:   err.Error(),
+			Results: []model.PingResult{},
+			Statistics: model.PingStatistics{
+				Sent:     req.Count,
+				Received: 0,
+				LossRate: "100%",
+			},
+		}
+		if task, ok := s.pingTasks[taskID]; ok {
+			task.Status = "failed"
+		}
+		return
+	}
+
+	// 设置 TaskID 并存储结果
+	response.TaskID = taskID
 	s.pingResults[taskID] = response
+
 	if task, ok := s.pingTasks[taskID]; ok {
 		task.Status = "completed"
 	}
-	s.mu.Unlock()
 }
 
 // GetPingTaskResult 获取 Ping 任务结果
