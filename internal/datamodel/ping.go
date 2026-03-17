@@ -27,6 +27,18 @@ func GetPingContent(ctx *context.Context) (types.Panel, error) {
 			<label>目标 IP 地址</label>
 			<input type="text" class="form-control" id="target" placeholder="192.168.1.1 或域名" style="width:250px;">
 		</div>
+		<div class="form-group">
+			<label>次数</label>
+			<input type="number" class="form-control" id="count" value="4" min="1" max="100" style="width:80px;">
+		</div>
+		<div class="form-group">
+			<label>超时 (秒)</label>
+			<input type="number" class="form-control" id="timeout" value="2" min="1" max="60" style="width:80px;">
+		</div>
+		<div class="form-group">
+			<label>间隔 (秒)</label>
+			<input type="number" class="form-control" id="interval" value="1" min="1" max="60" style="width:80px;">
+		</div>
 		<button type="button" class="btn btn-primary" id="ping-btn" onclick="startPing()">
 			<i class="fa fa-play"></i> Ping
 		</button>
@@ -43,16 +55,32 @@ func GetPingContent(ctx *context.Context) (types.Panel, error) {
 	function startPing() {
 		var vrfId = document.getElementById('vrf_id').value;
 		var target = document.getElementById('target').value;
+		var count = parseInt(document.getElementById('count').value) || 4;
+		var timeout = parseInt(document.getElementById('timeout').value) || 2;
+		var interval = parseInt(document.getElementById('interval').value) || 1;
 
+		// 参数验证
 		if (!target) {
 			alert('请输入目标 IP 地址或域名');
+			return;
+		}
+		if (count < 1 || count > 100) {
+			alert('次数必须在 1-100 之间');
+			return;
+		}
+		if (timeout < 1 || timeout > 60) {
+			alert('超时时间必须在 1-60 秒之间');
+			return;
+		}
+		if (interval < 1 || interval > 60) {
+			alert('间隔时间必须在 1-60 秒之间');
 			return;
 		}
 
 		document.getElementById('ping-btn').disabled = true;
 		document.getElementById('ping-btn').innerHTML = '<i class="fa fa-spinner fa-spin"></i> 执行中...';
 		document.getElementById('ping-result').style.display = 'block';
-		document.getElementById('ping-output').textContent = '正在执行 Ping ' + target + '...\n';
+		document.getElementById('ping-output').textContent = '正在执行 Ping ' + target + ' (次数=' + count + ', 超时=' + timeout + 's, 间隔=' + interval + 's)...\n';
 
 		fetch('/api/v1/diagnostic/ping', {
 			method: 'POST',
@@ -60,9 +88,9 @@ func GetPingContent(ctx *context.Context) (types.Panel, error) {
 			body: JSON.stringify({
 				vrf_id: vrfId,
 				target: target,
-				count: 4,
-				timeout: 2,
-				interval: 1
+				count: count,
+				timeout: timeout,
+				interval: interval
 			})
 		})
 		.then(res => res.json())

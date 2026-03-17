@@ -1,4 +1,4 @@
-package provider
+package mock
 
 import (
 	"context"
@@ -9,17 +9,17 @@ import (
 	"switch-admin/internal/model"
 )
 
-// MockPingProvider Mock 模式的 Ping Provider
+// PingProvider Mock 模式的 Ping Provider
 // 用于离线测试模式，生成模拟 Ping 结果
-type MockPingProvider struct{}
+type PingProvider struct{}
 
-// NewMockPingProvider 创建 Mock Ping Provider
-func NewMockPingProvider() *MockPingProvider {
-	return &MockPingProvider{}
+// NewPingProvider 创建 Mock Ping Provider
+func NewPingProvider() *PingProvider {
+	return &PingProvider{}
 }
 
 // ExecutePing 生成模拟 Ping 结果
-func (p *MockPingProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*model.PingTaskResponse, error) {
+func (p *PingProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*model.PingTaskResponse, error) {
 	// 模拟网络延迟
 	time.Sleep(100 * time.Millisecond)
 

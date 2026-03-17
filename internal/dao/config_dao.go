@@ -3,6 +3,7 @@ package dao
 import (
 	"database/sql"
 	"errors"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -14,17 +15,39 @@ var (
 	dbPath            = "data/admin.db"
 )
 
-// getDB 获取数据库连接
-func getDB() *sql.DB {
-	db, err := sql.Open("sqlite3", dbPath)
+// openDB 打开数据库连接（每次操作创建新连接，避免并发问题）
+func openDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return db
+	// 自动初始化 sys_config 表
+	if err := initConfigTable(db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+// initConfigTable 初始化 sys_config 表（如果不存在）
+func initConfigTable(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS sys_config (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			config_key VARCHAR(64) NOT NULL UNIQUE,
+			config_value TEXT NOT NULL,
+			description TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	return err
 }
 
 // ConfigDAO 配置数据访问对象
-type ConfigDAO struct{}
+type ConfigDAO struct {
+	mu sync.Mutex // 数据库访问互斥锁
+}
 
 // NewConfigDAO 创建配置 DAO
 func NewConfigDAO() *ConfigDAO {
@@ -33,11 +56,17 @@ func NewConfigDAO() *ConfigDAO {
 
 // GetRunMode 获取运行模式
 func (d *ConfigDAO) GetRunMode() (string, error) {
-数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	db, err := openDB()
+	if err != nil {
+		return "mock", nil
+	}
+	defer db.Close()
 
 	var configValue string
-	err := 数据库.QueryRow("SELECT config_value FROM sys_config WHERE config_key = ?", "run_mode").Scan(&configValue)
+	err = db.QueryRow("SELECT config_value FROM sys_config WHERE config_key = ?", "run_mode").Scan(&configValue)
 	if err != nil {
 		return "mock", nil // 默认模式
 	}
@@ -47,26 +76,32 @@ func (d *ConfigDAO) GetRunMode() (string, error) {
 
 // SetRunMode 设置运行模式
 func (d *ConfigDAO) SetRunMode(mode string) error {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	db, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
 	now := time.Now().Format("2006-01-02 15:04:05")
 
 	// 检查配置是否存在
 	var exists int
-	err := 数据库.QueryRow("SELECT COUNT(*) FROM sys_config WHERE config_key = ?", "run_mode").Scan(&exists)
+	err = db.QueryRow("SELECT COUNT(*) FROM sys_config WHERE config_key = ?", "run_mode").Scan(&exists)
 	if err != nil {
 		return err
 	}
 
 	if exists > 0 {
 		// 更新
-		_, err = 数据库.Exec("UPDATE sys_config SET config_value = ?, updated_at = ? WHERE config_key = ?",
+		_, err = db.Exec("UPDATE sys_config SET config_value = ?, updated_at = ? WHERE config_key = ?",
 			mode, now, "run_mode")
 		return err
 	} else {
 		// 插入
-		_, err = 数据库.Exec("INSERT INTO sys_config (config_key, config_value, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+		_, err = db.Exec("INSERT INTO sys_config (config_key, config_value, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
 			"run_mode", mode, "运行模式：mock=离线测试，switch=交换机", now, now)
 		return err
 	}
@@ -74,11 +109,17 @@ func (d *ConfigDAO) SetRunMode(mode string) error {
 
 // GetConfig 获取配置项
 func (d *ConfigDAO) GetConfig(key string) (string, error) {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	db, err := openDB()
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
 
 	var configValue string
-	err := 数据库.QueryRow("SELECT config_value FROM sys_config WHERE config_key = ?", key).Scan(&configValue)
+	err = db.QueryRow("SELECT config_value FROM sys_config WHERE config_key = ?", key).Scan(&configValue)
 	if err != nil {
 		return "", err
 	}
@@ -88,8 +129,14 @@ func (d *ConfigDAO) GetConfig(key string) (string, error) {
 
 // SetConfig 设置配置项
 func (d *ConfigDAO) SetConfig(key, value, description string) error {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	db, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
 	exists, err := d.configExists(key)
 	if err != nil {
@@ -99,11 +146,11 @@ func (d *ConfigDAO) SetConfig(key, value, description string) error {
 	now := time.Now().Format("2006-01-02 15:04:05")
 
 	if exists {
-		_, err = 数据库.Exec("UPDATE sys_config SET config_value = ?, updated_at = ? WHERE config_key = ?",
+		_, err = db.Exec("UPDATE sys_config SET config_value = ?, updated_at = ? WHERE config_key = ?",
 			value, now, key)
 		return err
 	} else {
-		_, err = 数据库.Exec("INSERT INTO sys_config (config_key, config_value, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+		_, err = db.Exec("INSERT INTO sys_config (config_key, config_value, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
 			key, value, description, now, now)
 		return err
 	}
@@ -111,11 +158,14 @@ func (d *ConfigDAO) SetConfig(key, value, description string) error {
 
 // configExists 检查配置是否存在
 func (d *ConfigDAO) configExists(key string) (bool, error) {
-	数据库 := getDB()
-	defer 数据库.Close()
+	db, err := openDB()
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
 
 	var count int
-	err := 数据库.QueryRow("SELECT COUNT(*) FROM sys_config WHERE config_key = ?", key).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM sys_config WHERE config_key = ?", key).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -124,10 +174,16 @@ func (d *ConfigDAO) configExists(key string) (bool, error) {
 
 // GetAdapterConfigs 获取指定功能的所有适配器配置
 func (d *ConfigDAO) GetAdapterConfigs(functionName string) ([]model.AdapterConfig, error) {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	rows, err := 数据库.Query("SELECT id, function_name, adapter_type, priority, enabled, config FROM adapter_config WHERE function_name = ? ORDER BY priority DESC", functionName)
+	db, err := openDB()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, function_name, adapter_type, priority, enabled, config FROM adapter_config WHERE function_name = ? ORDER BY priority DESC", functionName)
 	if err != nil {
 		return nil, err
 	}
@@ -148,11 +204,17 @@ func (d *ConfigDAO) GetAdapterConfigs(functionName string) ([]model.AdapterConfi
 
 // GetEnabledAdapterConfig 获取指定功能的已启用适配器配置（优先级最高）
 func (d *ConfigDAO) GetEnabledAdapterConfig(functionName string) (*model.AdapterConfig, error) {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	db, err := openDB()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
 
 	var config model.AdapterConfig
-	err := 数据库.QueryRow("SELECT id, function_name, adapter_type, priority, enabled, config FROM adapter_config WHERE function_name = ? AND enabled = 1 ORDER BY priority DESC LIMIT 1", functionName).Scan(
+	err = db.QueryRow("SELECT id, function_name, adapter_type, priority, enabled, config FROM adapter_config WHERE function_name = ? AND enabled = 1 ORDER BY priority DESC LIMIT 1", functionName).Scan(
 		&config.ID, &config.FunctionName, &config.AdapterType, &config.Priority, &config.Enabled, &config.Config)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -166,8 +228,14 @@ func (d *ConfigDAO) GetEnabledAdapterConfig(functionName string) (*model.Adapter
 
 // UpdateAdapterConfig 更新适配器配置
 func (d *ConfigDAO) UpdateAdapterConfig(id int64, enabled bool, priority int, config string) error {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	db, err := openDB()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
 	now := time.Now().Format("2006-01-02 15:04:05")
 
@@ -176,17 +244,23 @@ func (d *ConfigDAO) UpdateAdapterConfig(id int64, enabled bool, priority int, co
 		enabledInt = 1
 	}
 
-	_, err := 数据库.Exec("UPDATE adapter_config SET enabled = ?, priority = ?, config = ?, updated_at = ? WHERE id = ?",
+	_, err = db.Exec("UPDATE adapter_config SET enabled = ?, priority = ?, config = ?, updated_at = ? WHERE id = ?",
 		enabledInt, priority, config, now, id)
 	return err
 }
 
 // GetAllAdapterConfigs 获取所有适配器配置
 func (d *ConfigDAO) GetAllAdapterConfigs() ([]model.AdapterConfig, error) {
-	数据库 := getDB()
-	defer 数据库.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	rows, err := 数据库.Query("SELECT id, function_name, adapter_type, priority, enabled, config FROM adapter_config ORDER BY function_name ASC, priority DESC")
+	db, err := openDB()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, function_name, adapter_type, priority, enabled, config FROM adapter_config ORDER BY function_name ASC, priority DESC")
 	if err != nil {
 		return nil, err
 	}

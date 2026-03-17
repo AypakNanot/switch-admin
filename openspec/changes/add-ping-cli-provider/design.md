@@ -359,3 +359,30 @@ func TestCLIPingProvider_ExecutePing(t *testing.T) {
 
 - 真实执行 Ping localhost
 - 验证结果解析正确性
+
+## 8. 最终目录结构
+
+```
+internal/service/provider/
+├── interface.go              # Provider 接口定义
+│   ├── PingProvider
+│   ├── TracerouteProvider
+│   └── CableTestProvider
+├── cli/                      # CLI Provider 实现
+│   └── ping.go               # 执行系统 ping 命令
+├── mock/                     # Mock Provider 实现
+│   └── ping.go               # 生成模拟数据
+└── netconf/                  # NETCONF Provider (未来扩展)
+```
+
+### 8.1 命名简化
+
+重构后移除了文件名中的 Provider 类型前缀：
+- `cli_ping_provider.go` → `cli/ping.go` (package `cli`)
+- `mock_ping_provider.go` → `mock/ping.go` (package `mock`)
+- `CLIPingProvider` → `PingProvider` (在 cli 包中)
+- `MockPingProvider` → `PingProvider` (在 mock 包中)
+
+通过目录隔离，不同 Provider 可以使用相同的结构体名称，通过包名区分：
+- `cli.PingProvider` - CLI 模式的 Ping Provider
+- `mock.PingProvider` - Mock 模式的 Ping Provider

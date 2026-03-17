@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"switch-admin/internal/service/provider"
+	"switch-admin/internal/service/provider/cli"
+	"switch-admin/internal/service/provider/mock"
 )
 
 // RunMode 运行模式
@@ -56,8 +58,8 @@ type ModeResolver struct {
 	configDAO ConfigDAO
 
 	// Provider 缓存
-	mockPingProvider  *provider.MockPingProvider
-	cliPingProvider   *provider.CLIPingProvider
+	mockPingProvider  *mock.PingProvider
+	cliPingProvider   *cli.PingProvider
 }
 
 // ConfigDAO 配置数据访问接口（用于解耦）
@@ -82,8 +84,8 @@ func NewModeResolver(config ModeResolverConfig) *ModeResolver {
 	return &ModeResolver{
 		currentMode:       mode,
 		configDAO:         config.ConfigDAO,
-		mockPingProvider:  provider.NewMockPingProvider(),
-		cliPingProvider:   provider.NewCLIPingProvider(),
+		mockPingProvider:  mock.NewPingProvider(),
+		cliPingProvider:   cli.NewPingProvider(),
 	}
 }
 
@@ -173,10 +175,12 @@ func (r *ModeResolver) GetPingProvider() provider.PingProvider {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	switch r.currentMode {
-	case ModeSwitch:
-		return r.cliPingProvider
-	default:
-		return r.mockPingProvider
+	var pingProvider provider.PingProvider
+	if r.currentMode == ModeSwitch {
+		pingProvider = r.cliPingProvider
+	} else {
+		pingProvider = r.mockPingProvider
 	}
+
+	return pingProvider
 }

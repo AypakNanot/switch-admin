@@ -1,4 +1,4 @@
-package provider
+package cli
 
 import (
 	"context"
@@ -13,15 +13,15 @@ import (
 	"switch-admin/internal/model"
 )
 
-// CLIPingProvider CLI 模式的 Ping Provider
+// PingProvider CLI 模式的 Ping Provider
 // 执行系统 Ping 命令并解析结果
-type CLIPingProvider struct {
+type PingProvider struct {
 	execFunc func(command string, args ...string) ([]byte, error)
 }
 
-// NewCLIPingProvider 创建 CLI Ping Provider
-func NewCLIPingProvider() *CLIPingProvider {
-	return &CLIPingProvider{
+// NewPingProvider 创建 CLI Ping Provider
+func NewPingProvider() *PingProvider {
+	return &PingProvider{
 		execFunc: func(command string, args ...string) ([]byte, error) {
 			cmd := exec.Command(command, args...)
 			return cmd.CombinedOutput()
@@ -30,7 +30,7 @@ func NewCLIPingProvider() *CLIPingProvider {
 }
 
 // ExecutePing 执行系统 Ping 命令并解析结果
-func (p *CLIPingProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*model.PingTaskResponse, error) {
+func (p *PingProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*model.PingTaskResponse, error) {
 	// 1. 构建 Ping 命令
 	cmd := "ping"
 	args := p.buildPingArgs(req)
@@ -50,7 +50,7 @@ func (p *CLIPingProvider) ExecutePing(ctx context.Context, req model.PingRequest
 }
 
 // buildPingArgs 构建 Ping 命令参数
-func (p *CLIPingProvider) buildPingArgs(req model.PingRequest) []string {
+func (p *PingProvider) buildPingArgs(req model.PingRequest) []string {
 	args := []string{}
 
 	// Count
@@ -79,7 +79,7 @@ func (p *CLIPingProvider) buildPingArgs(req model.PingRequest) []string {
 }
 
 // wrapVRFCommand 包装 VRF 命令
-func (p *CLIPingProvider) wrapVRFCommand(vrfID, cmd string, args []string) (string, []string) {
+func (p *PingProvider) wrapVRFCommand(vrfID, cmd string, args []string) (string, []string) {
 	if runtime.GOOS == "windows" {
 		// Windows: 使用 -S 指定源地址（模拟 VRF）
 		// 实际 VRF 支持需要 Windows Server
@@ -92,7 +92,7 @@ func (p *CLIPingProvider) wrapVRFCommand(vrfID, cmd string, args []string) (stri
 }
 
 // parsePingOutput 解析 Ping 命令输出
-func (p *CLIPingProvider) parsePingOutput(output []byte, err error, req model.PingRequest, execTime time.Duration) (*model.PingTaskResponse, error) {
+func (p *PingProvider) parsePingOutput(output []byte, err error, req model.PingRequest, execTime time.Duration) (*model.PingTaskResponse, error) {
 	response := &model.PingTaskResponse{
 		TaskID:     "",
 		Status:     "completed",
@@ -165,7 +165,7 @@ func (p *CLIPingProvider) parsePingOutput(output []byte, err error, req model.Pi
 }
 
 // parseWindowsOutput 解析 Windows Ping 输出
-func (p *CLIPingProvider) parseWindowsOutput(lines []string) ([]model.PingResult, []float64, int) {
+func (p *PingProvider) parseWindowsOutput(lines []string) ([]model.PingResult, []float64, int) {
 	results := make([]model.PingResult, 0)
 	var rttTimes []float64
 	received := 0
@@ -206,7 +206,7 @@ func (p *CLIPingProvider) parseWindowsOutput(lines []string) ([]model.PingResult
 }
 
 // parseLinuxOutput 解析 Linux Ping 输出
-func (p *CLIPingProvider) parseLinuxOutput(lines []string) ([]model.PingResult, []float64, int) {
+func (p *PingProvider) parseLinuxOutput(lines []string) ([]model.PingResult, []float64, int) {
 	results := make([]model.PingResult, 0)
 	var rttTimes []float64
 	received := 0
