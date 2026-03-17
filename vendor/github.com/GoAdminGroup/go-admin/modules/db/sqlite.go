@@ -83,7 +83,7 @@ func (db *Sqlite) InitDB(cfgList map[string]config.Database) Connection {
 	db.Configs = cfgList
 	db.Once.Do(func() {
 		for conn, cfg := range cfgList {
-			sqlDB, err := sql.Open("sqlite3", cfg.GetDSN())
+			sqlDB, err := sql.Open("sqlite", cfg.GetDSN())
 
 			if err != nil {
 				panic(err)
