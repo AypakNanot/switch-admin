@@ -89,11 +89,11 @@ func (h *RouteHandler) GetRouteTable(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code": 200,
 		"data": gin.H{
-			"total":      total,
-			"page":       page,
-			"page_size":  pageSize,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
 			"total_pages": totalPages,
-			"items":      pagedRoutes,
+			"items":       pagedRoutes,
 		},
 	})
 }
@@ -184,11 +184,11 @@ func (h *RouteHandler) UpdateStaticRoute(c *gin.Context) {
 		"code":    200,
 		"message": "更新成功",
 		"data": gin.H{
-			"id":          id,
-			"dest_ip":     req.DestIP,
-			"dest_mask":   req.DestMask,
-			"next_hop":    req.NextHop,
-			"distance":    req.Distance,
+			"id":        id,
+			"dest_ip":   req.DestIP,
+			"dest_mask": req.DestMask,
+			"next_hop":  req.NextHop,
+			"distance":  req.Distance,
 		},
 	})
 }

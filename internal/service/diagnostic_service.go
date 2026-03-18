@@ -13,14 +13,14 @@ import (
 
 // DiagnosticService 网络诊断服务
 type DiagnosticService struct {
-	pingTasks       map[string]*model.PingTask
-	pingResults     map[string]*model.PingTaskResponse
-	traceTasks      map[string]*model.TracerouteTask
-	traceResults    map[string]*model.TracerouteResponse
-	cableTasks      map[string]string
-	cableResults    map[string]*model.CableTestResult
-	mu              sync.RWMutex
-	modeResolver    *mode.ModeResolver
+	pingTasks    map[string]*model.PingTask
+	pingResults  map[string]*model.PingTaskResponse
+	traceTasks   map[string]*model.TracerouteTask
+	traceResults map[string]*model.TracerouteResponse
+	cableTasks   map[string]string
+	cableResults map[string]*model.CableTestResult
+	mu           sync.RWMutex
+	modeResolver *mode.ModeResolver
 }
 
 var diagnosticService *DiagnosticService

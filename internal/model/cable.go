@@ -2,16 +2,16 @@ package model
 
 // CableTestResult 虚拟电缆检测结果
 type CableTestResult struct {
-	TaskID          string         `json:"task_id"`
-	PortID          string         `json:"port_id"`
-	Status          string         `json:"status"` // completed/failed
-	AdminStatus     string         `json:"admin_status"`
-	LinkStatus      string         `json:"link_status"`
-	CableStatus     string         `json:"cable_status"` // normal/open/short/cross/impedance
-	FaultDesc       string         `json:"fault_description"`
-	FaultDistance   string         `json:"fault_distance"`
-	CableLength     string         `json:"cable_length"`
-	Pairs           CablePairs     `json:"pairs"`
+	TaskID        string     `json:"task_id"`
+	PortID        string     `json:"port_id"`
+	Status        string     `json:"status"` // completed/failed
+	AdminStatus   string     `json:"admin_status"`
+	LinkStatus    string     `json:"link_status"`
+	CableStatus   string     `json:"cable_status"` // normal/open/short/cross/impedance
+	FaultDesc     string     `json:"fault_description"`
+	FaultDistance string     `json:"fault_distance"`
+	CableLength   string     `json:"cable_length"`
+	Pairs         CablePairs `json:"pairs"`
 }
 
 // CablePairs 线对状态
@@ -35,9 +35,9 @@ type PortInfo struct {
 	Type        string `json:"type"` // electrical/optical
 	AdminStatus string `json:"admin_status"`
 	LinkStatus  string `json:"link_status"`
-	Label       string `json:"label"`       // 显示标签
-	Detectable  bool   `json:"detectable"`  // 是否可检测
-	Hint        string `json:"hint"`        // 提示信息
+	Label       string `json:"label"`      // 显示标签
+	Detectable  bool   `json:"detectable"` // 是否可检测
+	Hint        string `json:"hint"`       // 提示信息
 }
 
 // CableTestRequest 电缆检测请求
@@ -47,15 +47,15 @@ type CableTestRequest struct {
 
 // CableTestResponse 电缆检测响应
 type CableTestResponse struct {
-	Code    int              `json:"code"`
-	Data    CableTestResult  `json:"data"`
-	Message string           `json:"message,omitempty"`
+	Code    int             `json:"code"`
+	Data    CableTestResult `json:"data"`
+	Message string          `json:"message,omitempty"`
 }
 
 // PortListResponse 端口列表响应
 type PortListResponse struct {
-	Code  int        `json:"code"`
-	Data  PortListData `json:"data"`
+	Code int          `json:"code"`
+	Data PortListData `json:"data"`
 }
 
 // PortListData 端口列表数据

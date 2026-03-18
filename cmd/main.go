@@ -11,14 +11,19 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/GoAdminGroup/go-admin/engine"
-	"switch-admin/internal/datamodel"
-	"switch-admin/internal/handler"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/chartjs"
 	"github.com/GoAdminGroup/themes/adminlte"
 	"github.com/gin-gonic/gin"
+	"switch-admin/internal/datamodel"
+	maintDatamodel "switch-admin/internal/datamodel/maintenance"
+	configDatamodel "switch-admin/internal/datamodel/config"
+	"switch-admin/internal/handler"
+	maintHandler "switch-admin/internal/handler/maintenance"
+	networkHandler "switch-admin/internal/handler/network"
+	configHandler "switch-admin/internal/handler/config"
 )
 
 func main() {
@@ -32,8 +37,9 @@ func main() {
 	sysHandler := handler.NewSystemHandler()
 	routeHandler := handler.NewRouteHandler()
 	diagnosticHandler := handler.NewDiagnosticHandler()
-	maintenanceHandler := handler.NewMaintenanceHandler()
-	configHandler := handler.NewConfigHandler()
+	maintenanceHandler := maintHandler.New()
+	networkHandler := networkHandler.New()
+	configHandler := configHandler.New()
 
 	// 在 GoAdmin 之前注册 API 路由（直接注册到主路由器）
 	r.GET("/health", func(c *gin.Context) {
@@ -53,10 +59,10 @@ func main() {
 		c.JSON(200, map[string]interface{}{
 			"code": 200,
 			"data": map[string]interface{}{
-				"mode":            currentMode,
+				"mode":             currentMode,
 				"mode_description": modeDesc,
-				"database":        "SQLite3 (data/admin.db)",
-				"goadmin_version": "v1.2.26",
+				"database":         "SQLite3 (data/admin.db)",
+				"goadmin_version":  "v1.2.26",
 			},
 		})
 	})
@@ -156,6 +162,45 @@ func main() {
 	r.PUT("/api/v1/link-aggregation/:id", configHandler.UpdateLinkAggregation)
 	r.DELETE("/api/v1/link-aggregation/:id", configHandler.DeleteLinkAggregation)
 
+	// 网络模块 API - VLAN 管理
+	r.GET("/api/v1/network/vlans", networkHandler.GetVLANList)
+	r.POST("/api/v1/network/vlans", networkHandler.CreateVLAN)
+	r.PUT("/api/v1/network/vlans/:id", networkHandler.UpdateVLAN)
+	r.DELETE("/api/v1/network/vlans/:id", networkHandler.DeleteVLAN)
+	r.DELETE("/api/v1/network/vlans", networkHandler.DeleteVLANs)
+	r.POST("/api/v1/network/vlans/:id/ports", networkHandler.AddVLANPort)
+	r.DELETE("/api/v1/network/vlans/:id/ports", networkHandler.RemoveVLANPort)
+
+	// 网络模块 API - 端口管理
+	r.GET("/api/v1/network/ports", networkHandler.GetPortList)
+	r.GET("/api/v1/network/ports/:name", networkHandler.GetPortDetail)
+	r.PUT("/api/v1/network/ports/:name", networkHandler.UpdatePort)
+	r.POST("/api/v1/network/ports/:name/reset", networkHandler.ResetPort)
+	r.POST("/api/v1/network/ports/:name/restart", networkHandler.RestartPort)
+
+	// 网络模块 API - 链路聚合管理
+	r.GET("/api/v1/network/lags", networkHandler.GetLAGList)
+	r.POST("/api/v1/network/lags", networkHandler.CreateLAG)
+	r.PUT("/api/v1/network/lags/:id", networkHandler.UpdateLAG)
+	r.DELETE("/api/v1/network/lags/:id", networkHandler.DeleteLAG)
+	r.POST("/api/v1/network/lags/:id/ports", networkHandler.AddLAGPort)
+	r.DELETE("/api/v1/network/lags/:id/ports", networkHandler.RemoveLAGPort)
+
+	// 网络模块 API - STP 管理
+	r.GET("/api/v1/network/stp/config", networkHandler.GetSTPConfig)
+	r.PUT("/api/v1/network/stp/config", networkHandler.UpdateSTPConfig)
+	r.GET("/api/v1/network/stp/status", networkHandler.GetSTPStatus)
+
+	// 网络模块 API - ACL 管理
+	r.GET("/api/v1/network/acls", networkHandler.GetACLList)
+	r.POST("/api/v1/network/acls", networkHandler.CreateACL)
+	r.PUT("/api/v1/network/acls/:id", networkHandler.UpdateACL)
+	r.DELETE("/api/v1/network/acls/:id", networkHandler.DeleteACL)
+	r.GET("/api/v1/network/acls/:id/rules", networkHandler.GetACLRules)
+	r.POST("/api/v1/network/acls/:id/rules", networkHandler.AddACLRule)
+	r.PUT("/api/v1/network/acls/:id/rules/:ruleID", networkHandler.UpdateACLRule)
+	r.DELETE("/api/v1/network/acls/:id/rules/:ruleID", networkHandler.DeleteACLRule)
+
 	// 首页重定向到 Dashboard
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "/admin")
@@ -175,7 +220,7 @@ func main() {
 				ConnMaxLifetime: time.Hour,
 			},
 		},
-		UrlPrefix:           "admin",
+		UrlPrefix: "admin",
 		Store: config.Store{
 			Path:   "./uploads",
 			Prefix: "uploads",
@@ -228,22 +273,22 @@ func main() {
 	e.HTML("GET", "/admin/network/cable-test", datamodel.GetCableTestContent, false)
 
 	// 维护模块
-	e.HTML("GET", "/admin/maintenance/reboot-save", datamodel.GetRebootSaveContent, false)
-	e.HTML("GET", "/admin/maintenance/users", datamodel.GetUsersContent, false)
-	e.HTML("GET", "/admin/maintenance/system-config", datamodel.GetMaintenanceSystemConfigContent, false)
-	e.HTML("GET", "/admin/maintenance/load-config", datamodel.GetLoadConfigContent, false)
-	e.HTML("GET", "/admin/maintenance/files", datamodel.GetFilesContent, false)
-	e.HTML("GET", "/admin/maintenance/logs", datamodel.GetLogsContent, false)
-	e.HTML("GET", "/admin/maintenance/snmp", datamodel.GetSNMPContent, false)
-	e.HTML("GET", "/admin/maintenance/snmp-trap", datamodel.GetSNMPTrapContent, false)
-	e.HTML("GET", "/admin/maintenance/worm-protection", datamodel.GetWormProtectionContent, false)
-	e.HTML("GET", "/admin/maintenance/ddos-protection", datamodel.GetDDoSProtectionContent, false)
-	e.HTML("GET", "/admin/maintenance/arp-protection", datamodel.GetARPProtectionContent, false)
-	e.HTML("GET", "/admin/maintenance/sessions", datamodel.GetSessionsContent, false)
+	e.HTML("GET", "/admin/maintenance/reboot-save", maintDatamodel.GetRebootSaveContent, false)
+	e.HTML("GET", "/admin/maintenance/users", maintDatamodel.GetUsersContent, false)
+	e.HTML("GET", "/admin/maintenance/system-config", maintDatamodel.GetMaintenanceSystemConfigContent, false)
+	e.HTML("GET", "/admin/maintenance/load-config", maintDatamodel.GetLoadConfigContent, false)
+	e.HTML("GET", "/admin/maintenance/files", maintDatamodel.GetFilesContent, false)
+	e.HTML("GET", "/admin/maintenance/logs", maintDatamodel.GetLogsContent, false)
+	e.HTML("GET", "/admin/maintenance/snmp", maintDatamodel.GetSNMPContent, false)
+	e.HTML("GET", "/admin/maintenance/snmp-trap", maintDatamodel.GetSNMPTrapContent, false)
+	e.HTML("GET", "/admin/maintenance/worm-protection", maintDatamodel.GetWormProtectionContent, false)
+	e.HTML("GET", "/admin/maintenance/ddos-protection", maintDatamodel.GetDDoSProtectionContent, false)
+	e.HTML("GET", "/admin/maintenance/arp-protection", maintDatamodel.GetARPProtectionContent, false)
+	e.HTML("GET", "/admin/maintenance/sessions", maintDatamodel.GetSessionsContent, false)
 
 	// 配置模块
-	e.HTML("GET", "/admin/config/ports", datamodel.GetPortsContent, false)
-	e.HTML("GET", "/admin/config/link-aggregation", datamodel.GetLinkAggregationContent, false)
+	e.HTML("GET", "/admin/config/ports", configDatamodel.GetPortsContent, false)
+	e.HTML("GET", "/admin/config/link-aggregation", configDatamodel.GetLinkAggregationContent, false)
 	e.HTML("GET", "/admin/config/storm-control", datamodel.GetStormControlContent, false)
 	e.HTML("GET", "/admin/config/flow-control", datamodel.GetFlowControlContent, false)
 	e.HTML("GET", "/admin/config/port-isolation", datamodel.GetPortIsolationContent, false)

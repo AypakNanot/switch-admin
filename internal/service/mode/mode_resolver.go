@@ -58,8 +58,14 @@ type ModeResolver struct {
 	configDAO ConfigDAO
 
 	// Provider 缓存
-	mockPingProvider  *mock.PingProvider
-	cliPingProvider   *cli.PingProvider
+	mockPingProvider         *mock.PingProvider
+	cliPingProvider          *cli.PingProvider
+	mockMaintenanceProvider  *mock.MaintenanceProvider
+	cliMaintenanceProvider   *cli.MaintenanceProvider
+	mockNetworkProvider      *mock.NetworkProvider
+	cliNetworkProvider       *cli.NetworkProvider
+	mockConfigProvider       *mock.ConfigProvider
+	cliConfigProvider        *cli.ConfigProvider
 }
 
 // ConfigDAO 配置数据访问接口（用于解耦）
@@ -82,10 +88,16 @@ func NewModeResolver(config ModeResolverConfig) *ModeResolver {
 	}
 
 	return &ModeResolver{
-		currentMode:       mode,
-		configDAO:         config.ConfigDAO,
-		mockPingProvider:  mock.NewPingProvider(),
-		cliPingProvider:   cli.NewPingProvider(),
+		currentMode:            mode,
+		configDAO:              config.ConfigDAO,
+		mockPingProvider:       mock.NewPingProvider(),
+		cliPingProvider:        cli.NewPingProvider(),
+		mockMaintenanceProvider: mock.NewMaintenanceProvider(),
+		cliMaintenanceProvider:  cli.NewMaintenanceProvider(),
+		mockNetworkProvider:    mock.NewNetworkProvider(),
+		cliNetworkProvider:     cli.NewNetworkProvider(),
+		mockConfigProvider:     mock.NewConfigProvider(),
+		cliConfigProvider:      cli.NewConfigProvider(),
 	}
 }
 
@@ -183,4 +195,37 @@ func (r *ModeResolver) GetPingProvider() provider.PingProvider {
 	}
 
 	return pingProvider
+}
+
+// GetMaintenanceProvider 根据当前模式返回对应的 Maintenance Provider
+func (r *ModeResolver) GetMaintenanceProvider() provider.MaintenanceProvider {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.currentMode == ModeSwitch {
+		return r.cliMaintenanceProvider
+	}
+	return r.mockMaintenanceProvider
+}
+
+// GetNetworkProvider 根据当前模式返回对应的 Network Provider
+func (r *ModeResolver) GetNetworkProvider() provider.NetworkProvider {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.currentMode == ModeSwitch {
+		return r.cliNetworkProvider
+	}
+	return r.mockNetworkProvider
+}
+
+// GetConfigProvider 根据当前模式返回对应的 Config Provider
+func (r *ModeResolver) GetConfigProvider() provider.ConfigProvider {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.currentMode == ModeSwitch {
+		return r.cliConfigProvider
+	}
+	return r.mockConfigProvider
 }

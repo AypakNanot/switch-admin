@@ -14,12 +14,12 @@ type PortStatus struct {
 	Description string `json:"description"`  // 端口描述
 
 	// 流量统计（64 位计数器）
-	RxBytes    uint64 `json:"rx_bytes"`
-	TxBytes    uint64 `json:"tx_bytes"`
-	RxPackets  uint64 `json:"rx_packets"`
-	TxPackets  uint64 `json:"tx_packets"`
-	RxErrors   uint64 `json:"rx_errors"`
-	TxErrors   uint64 `json:"tx_errors"`
+	RxBytes   uint64 `json:"rx_bytes"`
+	TxBytes   uint64 `json:"tx_bytes"`
+	RxPackets uint64 `json:"rx_packets"`
+	TxPackets uint64 `json:"tx_packets"`
+	RxErrors  uint64 `json:"rx_errors"`
+	TxErrors  uint64 `json:"tx_errors"`
 
 	UpdatedAt time.Time `json:"updated_at"`
 }

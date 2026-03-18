@@ -42,9 +42,9 @@ type PingTaskResponse struct {
 
 // PingRequest Ping 请求参数
 type PingRequest struct {
-	VrfID  string `json:"vrf_id"`
-	Target string `json:"target"`
-	Count  int    `json:"count"`
-	Timeout int   `json:"timeout"`
-	Interval int `json:"interval"`
+	VrfID    string `json:"vrf_id"`
+	Target   string `json:"target"`
+	Count    int    `json:"count"`
+	Timeout  int    `json:"timeout"`
+	Interval int    `json:"interval"`
 }

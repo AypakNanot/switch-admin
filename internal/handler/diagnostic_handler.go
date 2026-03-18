@@ -204,8 +204,8 @@ func (h *DiagnosticHandler) ExecuteCableTest(c *gin.Context) {
 		code := http.StatusBadRequest
 		if errMsg == "光口不支持虚拟电缆检测" {
 			c.JSON(code, gin.H{
-				"code":  code,
-				"error": "PORT_NOT_ELECTRICAL",
+				"code":    code,
+				"error":   "PORT_NOT_ELECTRICAL",
 				"message": errMsg,
 				"data": gin.H{
 					"port_id":   req.PortID,
@@ -214,11 +214,11 @@ func (h *DiagnosticHandler) ExecuteCableTest(c *gin.Context) {
 			})
 		} else if errMsg == "端口已关闭，请先在端口配置中启用该端口" {
 			c.JSON(code, gin.H{
-				"code":  code,
-				"error": "PORT_ADMIN_DOWN",
+				"code":    code,
+				"error":   "PORT_ADMIN_DOWN",
 				"message": errMsg,
 				"data": gin.H{
-					"port_id":       req.PortID,
+					"port_id":      req.PortID,
 					"admin_status": "down",
 				},
 			})

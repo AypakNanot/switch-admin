@@ -212,12 +212,12 @@ func getPortOverview() []map[string]types.InfoItem {
 		}
 
 		infoList = append(infoList, map[string]types.InfoItem{
-			"端口":   {Content: template.HTML(port.Name)},
-			"状态":   {Content: template.HTML(port.AdminStatus)},
-			"链路":   {Content: template.HTML(linkBadge)},
-			"速率":   {Content: template.HTML(port.Speed)},
-			"双工":   {Content: template.HTML(port.Duplex)},
-			"描述":   {Content: template.HTML(port.Description)},
+			"端口": {Content: template.HTML(port.Name)},
+			"状态": {Content: template.HTML(port.AdminStatus)},
+			"链路": {Content: template.HTML(linkBadge)},
+			"速率": {Content: template.HTML(port.Speed)},
+			"双工": {Content: template.HTML(port.Duplex)},
+			"描述": {Content: template.HTML(port.Description)},
 		})
 	}
 	return infoList
