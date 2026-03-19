@@ -20,6 +20,7 @@ import (
 	"switch-admin/internal/datamodel"
 	maintDatamodel "switch-admin/internal/datamodel/maintenance"
 	configDatamodel "switch-admin/internal/datamodel/config"
+	networkDatamodel "switch-admin/internal/datamodel/network"
 	"switch-admin/internal/handler"
 	maintHandler "switch-admin/internal/handler/maintenance"
 	networkHandler "switch-admin/internal/handler/network"
@@ -285,6 +286,13 @@ func main() {
 	e.HTML("GET", "/admin/maintenance/ddos-protection", maintDatamodel.GetDDoSProtectionContent, false)
 	e.HTML("GET", "/admin/maintenance/arp-protection", maintDatamodel.GetARPProtectionContent, false)
 	e.HTML("GET", "/admin/maintenance/sessions", maintDatamodel.GetSessionsContent, false)
+
+	// 网络模块
+	e.HTML("GET", "/admin/network/vlan", networkDatamodel.GetVLANContent, false)
+	e.HTML("GET", "/admin/network/port", networkDatamodel.GetPortContent, false)
+	e.HTML("GET", "/admin/network/lag", networkDatamodel.GetLAGContent, false)
+	e.HTML("GET", "/admin/network/stp", networkDatamodel.GetSTPContent, false)
+	e.HTML("GET", "/admin/network/acl", networkDatamodel.GetACLContent, false)
 
 	// 配置模块
 	e.HTML("GET", "/admin/config/ports", configDatamodel.GetPortsContent, false)
