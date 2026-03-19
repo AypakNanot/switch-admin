@@ -327,3 +327,206 @@ type ACL struct {
 5. 在 `datamodel/network/` 添加 UI 页面
 6. 在 `cmd/main.go` 注册 API 路由和页面路由
 7. 在 `model/network.go` 添加数据模型（如需要）
+
+---
+
+# Config 模块实现方法论
+
+## 架构概览
+
+Config（配置）模块与 Network/Maintenance 模块采用相同的**分层架构 + 策略模式**，实现交换机配置管理功能。
+
+### 1. 四层架构
+
+```
+Handler 层 (internal/handler/config/)
+    ↓ HTTP 请求处理
+Service 层 (internal/service/config_service.go)
+    ↓ 业务代理 + 模式切换
+Provider 接口层 (internal/service/provider/interface.go)
+    ↓ 接口实现
+CLI/Mock Provider (internal/service/provider/cli|mock/)
+    ↓ 数据源
+DataModel 层 (internal/datamodel/config/)
+    ↓ UI 渲染
+```
+
+### 2. 文件组织规范
+
+**按功能子模块拆分** - 每个子功能独立成文件：
+
+| 功能模块 | Handler | Provider (Mock/CLI) | DataModel |
+|---------|---------|---------------------|-----------|
+| 端口配置 | `port.go` | `config_port.go` | `port.go` |
+| 链路聚合 | `lag.go` | `config_lag.go` | `lag.go` |
+| 基础结构 | `handler.go` | `config_base.go` | `config.go` |
+
+### 3. 各层实现规范
+
+#### Handler 层 (`internal/handler/config/`)
+```go
+type Handler struct {
+    service *service.ConfigService
+}
+
+func New() *Handler {
+    return &Handler{service: service.GetConfigService()}
+}
+
+// 路由对应示例：
+// GET /api/v1/config/ports -> GetPorts()
+// GET /api/v1/config/ports/:port_id -> GetPortDetail()
+// PUT /api/v1/config/ports/:port_id -> UpdatePort()
+// GET /api/v1/config/link-aggregation -> GetLinkAggregation()
+// POST /api/v1/config/link-aggregation -> CreateLinkAggregation()
+// PUT /api/v1/config/link-aggregation/:id -> UpdateLinkAggregation()
+// DELETE /api/v1/config/link-aggregation/:id -> DeleteLinkAggregation()
+```
+
+#### Service 层 (`internal/service/config_service.go`)
+```go
+// 单例模式 + 线程安全
+var configService *ConfigService
+var configOnce sync.Once
+
+func GetConfigService() *ConfigService {
+    configOnce.Do(func() {
+        configService = &ConfigService{
+            modeResolver: mode.NewModeResolver(...),
+        }
+    })
+    return configService
+}
+
+func (s *ConfigService) GetPortList(ctx context.Context) (...) {
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    return s.getProvider().GetPortList(ctx)
+}
+```
+
+#### Provider 接口层
+```go
+// interface.go 中定义
+type ConfigProvider interface {
+    // 端口配置
+    GetPortList(ctx context.Context) (*model.PortConfigListResponse, error)
+    GetPortDetail(ctx context.Context, portID string) (*model.PortConfig, error)
+    UpdatePort(ctx context.Context, portID string, req model.PortConfigRequest) error
+
+    // 链路聚合配置
+    GetLinkAggregationList(ctx context.Context) (*model.LinkAggregationListResponse, error)
+    CreateLinkAggregation(ctx context.Context, req model.LinkAggregationRequest) error
+    UpdateLinkAggregation(ctx context.Context, id int, req model.LinkAggregationRequest) error
+    DeleteLinkAggregation(ctx context.Context, id int) error
+}
+```
+
+#### DataModel 层 (`internal/datamodel/config/`)
+```go
+// config.go - 页面导出函数
+func GetPortsContent(ctx *context.Context) (types.Panel, error) {
+    return getPortsContent(ctx)
+}
+func GetLinkAggregationContent(ctx *context.Context) (types.Panel, error) {
+    return getLinkAggregationContent(ctx)
+}
+
+// port.go - 端口配置页面实现
+func getPortsContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+    // fetch API 调用后端 Handler (/api/v1/config/ports)
+}
+```
+
+### 4. 路由注册 (`cmd/main.go`)
+
+```go
+// 导入
+configDatamodel "switch-admin/internal/datamodel/config"
+configHandler "switch-admin/internal/handler/config"
+
+// API 路由注册
+r.GET("/api/v1/config/ports", configHandler.GetPorts)
+r.GET("/api/v1/config/ports/:port_id", configHandler.GetPortDetail)
+r.PUT("/api/v1/config/ports/:port_id", configHandler.UpdatePort)
+r.GET("/api/v1/config/link-aggregation", configHandler.GetLinkAggregation)
+r.POST("/api/v1/config/link-aggregation", configHandler.CreateLinkAggregation)
+r.PUT("/api/v1/config/link-aggregation/:id", configHandler.UpdateLinkAggregation)
+r.DELETE("/api/v1/config/link-aggregation/:id", configHandler.DeleteLinkAggregation)
+
+// GoAdmin 页面注册
+e.HTML("GET", "/admin/config/ports", configDatamodel.GetPortsContent, false)
+e.HTML("GET", "/admin/config/link-aggregation", configDatamodel.GetLinkAggregationContent, false)
+```
+
+### 5. 数据模型 (`internal/model/config.go`)
+
+```go
+// 端口配置
+type PortConfig struct {
+    PortID      string `json:"port_id"`
+    AdminStatus string `json:"admin_status"` // enable/disable
+    LinkStatus  string `json:"link_status"`  // up/down
+    SpeedDuplex string `json:"speed_duplex"` // auto/10H/10F/100H/100F/1000F
+    FlowControl string `json:"flow_control"` // on/off
+    Description string `json:"description"`
+    Aggregation string `json:"aggregation"`  // - 或 Ag1, Ag2...
+}
+
+// 端口配置请求
+type PortConfigRequest struct {
+    AdminStatus string `json:"admin_status"`
+    Description string `json:"description"`
+    SpeedDuplex string `json:"speed_duplex"`
+    FlowControl string `json:"flow_control"`
+}
+
+// 链路聚合组
+type LinkAggregation struct {
+    GroupID     int      `json:"group_id"`
+    Name        string   `json:"name"`
+    Mode        string   `json:"mode"`       // LACP/Static
+    LoadBalance string   `json:"load_balance"`
+    MemberPorts []string `json:"member_ports"`
+    MinActive   int      `json:"min_active"`
+    Status      string   `json:"status"`     // normal/degraded/down
+}
+
+// 链路聚合请求
+type LinkAggregationRequest struct {
+    GroupID     int      `json:"group_id"`
+    Mode        string   `json:"mode"`
+    Description string   `json:"description"`
+    LoadBalance string   `json:"load_balance"`
+    MemberPorts []string `json:"member_ports"`
+    MinActive   int      `json:"min_active"`
+    LacpTimeout string   `json:"lacp_timeout"`
+    Priority    int      `json:"priority"`
+}
+```
+
+### 6. 新增功能步骤
+
+1. 在 `interface.go` 的 `ConfigProvider` 接口添加方法
+2. 在 `service/config_service.go` 添加代理方法
+3. 在 `handler/config/` 添加 HTTP Handler
+4. 在 `provider/cli/` 和 `provider/mock/` 分别实现
+5. 在 `datamodel/config/` 添加 UI 页面
+6. 在 `cmd/main.go` 注册 API 路由和页面路由
+7. 在 `model/config.go` 添加数据模型（如需要）
+
+---
+
+# 模块对比总结
+
+| 特性 | Maintenance | Network | Config |
+|------|-------------|---------|--------|
+| 核心功能 | 系统维护、安全防护 | 网络管理、诊断 | 端口配置、链路聚合 |
+| Handler 路径 | `internal/handler/maintenance/` | `internal/handler/network/` | `internal/handler/config/` |
+| DataModel 路径 | `internal/datamodel/maintenance/` | `internal/datamodel/network/` | `internal/datamodel/config/` |
+| Service | `MaintenanceService` | `NetworkService` | `ConfigService` |
+| Provider 接口 | `MaintenanceProvider` | `NetworkProvider` | `ConfigProvider` |
+| 模式切换 | ✓ | ✓ | ✓ |
+| 单例模式 | ✓ | ✓ | ✓ |
+| 线程安全 | ✓ | ✓ | ✓ |

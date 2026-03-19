@@ -154,8 +154,9 @@ func main() {
 	r.DELETE("/api/v1/sessions/:session_id", maintenanceHandler.DeleteSession)
 
 	// 配置模块 API - 端口管理
-	r.GET("/api/v1/ports", configHandler.GetPorts)
-	r.PUT("/api/v1/ports/:port_id", configHandler.UpdatePort)
+	r.GET("/api/v1/config/ports", configHandler.GetPorts)
+	r.GET("/api/v1/config/ports/:port_id", configHandler.GetPortDetail)
+	r.PUT("/api/v1/config/ports/:port_id", configHandler.UpdatePort)
 
 	// 配置模块 API - 链路聚合
 	r.GET("/api/v1/link-aggregation", configHandler.GetLinkAggregation)
