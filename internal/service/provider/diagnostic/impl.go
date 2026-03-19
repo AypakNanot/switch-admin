@@ -1,12 +1,13 @@
 package diagnostic
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"switch-admin/internal/model"
 )
@@ -24,15 +25,13 @@ func (p *CLIProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*
 	cmd := exec.Command("ping", args...)
 	output, err := cmd.CombinedOutput()
 
-	// 解析 ping 输出
-	response := parsePingOutput(string(output), req)
+	// 解析 ping 输出（GBK 编码）
+	response := parsePingOutputGBK(output, req)
 
 	if err != nil {
 		// 检查是否是超时或无法访问的错误
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			// ping 命令返回非 0 退出码，但可能仍有部分输出
 			if len(response.Results) == 0 {
-				// 没有任何成功响应，返回失败
 				return &model.PingTaskResponse{
 					TaskID:  "",
 					Status:  "failed",
@@ -47,11 +46,9 @@ func (p *CLIProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*
 					},
 				}, nil
 			}
-			// 有部分成功，返回部分结果
 			response.Status = "completed"
 			return response, nil
 		}
-		// 其他错误（如命令不存在）
 		return nil, err
 	}
 
@@ -59,8 +56,8 @@ func (p *CLIProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*
 	return response, nil
 }
 
-// parsePingOutput 解析 ping 命令输出（Windows 格式）
-func parsePingOutput(output string, req model.PingRequest) *model.PingTaskResponse {
+// parsePingOutputGBK 解析 ping 命令输出（Windows GBK 编码）
+func parsePingOutputGBK(output []byte, req model.PingRequest) *model.PingTaskResponse {
 	response := &model.PingTaskResponse{
 		TaskID:  "",
 		Target:  req.Target,
@@ -68,39 +65,68 @@ func parsePingOutput(output string, req model.PingRequest) *model.PingTaskRespon
 		Results: []model.PingResult{},
 	}
 
-	lines := strings.Split(output, "\n")
+	// GBK 编码字节模式
+	laiZi := []byte{0xc0, 0xb4, 0xd7, 0xd4}       // 来自
+	huiFu := []byte{0xb5, 0xc4, 0xbb, 0xd8, 0xb8, 0xb4} // 的回复
+	shiJian := []byte{0xca, 0xb1, 0xbc, 0xe4}     // 时间
+	qingQiu := []byte{0xc7, 0xeb, 0xc7, 0xf3, 0xc3, 0xac} // 请求超时
+	yiFaSong := []byte{0xd2, 0xd1, 0xb7, 0xa2, 0xcb, 0xcd} // 已发送
+	yiJieShou := []byte{0xd2, 0xd1, 0xbd, 0xd3, 0xca, 0xd5} // 已接收
+	diuShi := []byte{0xb6, 0xaa, 0xca, 0xa7}      // 丢失
+	zuiDuan := []byte{0xd7, 0xee, 0xb6, 0xcc}     // 最短
+	zuiChang := []byte{0xd7, 0xee, 0xb3, 0xa4}    // 最长
+	pingJun := []byte{0xc6, 0xbd, 0xbe, 0xf9}     // 平均
+
+	lines := bytes.Split(output, []byte{'\n'})
 	sent := 0
 	received := 0
 	var times []float64
 
-	// 正则表达式匹配响应行
-	// Windows 格式：来自 192.168.1.1 的回复：字节=32 时间=1ms TTL=64
-	replyRegex := regexp.MustCompile(`来自\s+([\d\.]+)\s+的回复.*?字节=(\d+).*?时间[<>=]?(\d+)ms.*?TTL=(\d+)`)
-	// 或：Reply from 192.168.1.1: bytes=32 time=1ms TTL=64
-	replyRegexEn := regexp.MustCompile(`Reply from\s+([\d\.]+):.*?bytes=(\d+).*?time[<>=]?(\d+)ms.*?TTL=(\d+)`)
-	// 超时：请求超时。或 Request timed out.
-	timeoutRegex := regexp.MustCompile(`请求超时。|Request timed out.`)
-	// 统计行：Ping 统计数据...
-	statsRegex := regexp.MustCompile(`已发送\s*=\s*(\d+)，\s*已接收\s*=\s*(\d+)，\s*丢失\s*=\s*(\d+)`)
-	statsRegexEn := regexp.MustCompile(`Packets:\s*Sent\s*=\s*(\d+),\s*Received\s*=\s*(\d+),\s*Lost\s*=\s*(\d+)`)
-	timeRegex := regexp.MustCompile(`最短\s*=\s*(\d+)ms,\s*最长\s*=\s*(\d+)ms,\s*平均\s*=\s*(\d+)ms`)
-	timeRegexEn := regexp.MustCompile(`Minimum\s*=\s*(\d+)ms,\s*Maximum\s*=\s*(\d+)ms,\s*Average\s*=\s*(\d+)ms`)
-
 	seq := 0
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-
-		// 检查是否响应
-		matches := replyRegex.FindStringSubmatch(line)
-		if matches == nil {
-			matches = replyRegexEn.FindStringSubmatch(line)
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
 		}
-		if matches != nil {
+
+		// 检查是否响应行：包含"来自"和"的回复"
+		if bytes.Contains(line, laiZi) && bytes.Contains(line, huiFu) {
 			seq++
 			sent++
 			received++
-			timeMs, _ := strconv.Atoi(matches[3])
-			ttl, _ := strconv.Atoi(matches[4])
+
+			// 提取 TTL 值
+			ttlIdx := bytes.Index(line, []byte("TTL="))
+			ttl := 0
+			if ttlIdx >= 0 {
+				ttlStart := ttlIdx + 4
+				ttlEnd := ttlStart
+				for ttlEnd < len(line) && line[ttlEnd] >= '0' && line[ttlEnd] <= '9' {
+					ttlEnd++
+				}
+				if ttlEnd > ttlStart {
+					ttl, _ = strconv.Atoi(string(line[ttlStart:ttlEnd]))
+				}
+			}
+
+			// 提取时间值（在"时间"之后，"ms" 之前）
+			timeIdx := bytes.Index(line, shiJian)
+			timeMs := 0
+			if timeIdx >= 0 {
+				timeStart := timeIdx + len(shiJian)
+				// 跳过 < = 等符号
+				for timeStart < len(line) && (line[timeStart] == '<' || line[timeStart] == '>' || line[timeStart] == '=') {
+					timeStart++
+				}
+				timeEnd := timeStart
+				for timeEnd < len(line) && line[timeEnd] >= '0' && line[timeEnd] <= '9' {
+					timeEnd++
+				}
+				if timeEnd > timeStart {
+					timeMs, _ = strconv.Atoi(string(line[timeStart:timeEnd]))
+				}
+			}
+
 			times = append(times, float64(timeMs))
 			response.Results = append(response.Results, model.PingResult{
 				Seq:    seq,
@@ -111,8 +137,8 @@ func parsePingOutput(output string, req model.PingRequest) *model.PingTaskRespon
 			continue
 		}
 
-		// 检查是否超时
-		if timeoutRegex.MatchString(line) {
+		// 检查是否超时：包含"请求超时"
+		if bytes.Contains(line, qingQiu) {
 			seq++
 			sent++
 			response.Results = append(response.Results, model.PingResult{
@@ -124,36 +150,33 @@ func parsePingOutput(output string, req model.PingRequest) *model.PingTaskRespon
 			continue
 		}
 
-		// 解析统计
-		matches = statsRegex.FindStringSubmatch(line)
-		if matches == nil {
-			matches = statsRegexEn.FindStringSubmatch(line)
-		}
-		if matches != nil {
-			sent, _ = strconv.Atoi(matches[1])
-			received, _ = strconv.Atoi(matches[2])
-			lost, _ := strconv.Atoi(matches[3])
-			lossRate := float64(lost) / float64(sent) * 100
-			response.Statistics = model.PingStatistics{
-				Sent:     sent,
-				Received: received,
-				LossRate: fmt.Sprintf("%.0f%%", lossRate),
+		// 解析统计行：包含"已发送"、"已接收"、"丢失"
+		if bytes.Contains(line, yiFaSong) && bytes.Contains(line, yiJieShou) && bytes.Contains(line, diuShi) {
+			// 提取数字
+			nums := extractNumbers(line)
+			if len(nums) >= 3 {
+				sent = nums[0]
+				received = nums[1]
+				lost := nums[2]
+				lossRate := float64(lost) / float64(sent) * 100
+				response.Statistics = model.PingStatistics{
+					Sent:     sent,
+					Received: received,
+					LossRate: fmt.Sprintf("%.0f%%", lossRate),
+				}
 			}
 			continue
 		}
 
-		// 解析时间统计
-		matches = timeRegex.FindStringSubmatch(line)
-		if matches == nil {
-			matches = timeRegexEn.FindStringSubmatch(line)
-		}
-		if matches != nil && len(times) > 0 {
-			minTime, _ := strconv.Atoi(matches[1])
-			maxTime, _ := strconv.Atoi(matches[2])
-			avgTime, _ := strconv.Atoi(matches[3])
-			response.Statistics.MinTime = fmt.Sprintf("%dms", minTime)
-			response.Statistics.MaxTime = fmt.Sprintf("%dms", maxTime)
-			response.Statistics.AvgTime = fmt.Sprintf("%dms", avgTime)
+		// 解析时间统计：包含"最短"、"最长"、"平均"
+		if bytes.Contains(line, zuiDuan) && bytes.Contains(line, zuiChang) && bytes.Contains(line, pingJun) {
+			nums := extractNumbers(line)
+			if len(nums) >= 3 {
+				response.Statistics.MinTime = fmt.Sprintf("%dms", nums[0])
+				response.Statistics.MaxTime = fmt.Sprintf("%dms", nums[1])
+				response.Statistics.AvgTime = fmt.Sprintf("%dms", nums[2])
+			}
+			continue
 		}
 	}
 
@@ -193,6 +216,40 @@ func parsePingOutput(output string, req model.PingRequest) *model.PingTaskRespon
 	return response
 }
 
+// extractNumbers 从 GBK 编码的字节切片中提取数字
+func extractNumbers(data []byte) []int {
+	var nums []int
+	i := 0
+	for i < len(data) {
+		// 跳过非数字
+		for i < len(data) && (data[i] < '0' || data[i] > '9') {
+			i++
+		}
+		if i >= len(data) {
+			break
+		}
+		// 提取数字
+		start := i
+		for i < len(data) && data[i] >= '0' && data[i] <= '9' {
+			i++
+		}
+		if i > start {
+			num, _ := strconv.Atoi(string(data[start:i]))
+			nums = append(nums, num)
+		}
+	}
+	return nums
+}
+
+// safeString 安全地将 GBK 字节转换为字符串（用于调试，实际不使用）
+func safeString(b []byte) string {
+	if utf8.Valid(b) {
+		return string(b)
+	}
+	// GBK 编码直接转字符串会乱码，但不会影响功能
+	return string(b)
+}
+
 // ExecuteTraceroute 执行 Traceroute 诊断 (CLI)
 func (p *CLIProvider) ExecuteTraceroute(ctx context.Context, req model.TracerouteRequest) (*model.TracerouteResponse, error) {
 	// TODO: 实现 CLI 模式的 Traceroute 诊断
@@ -206,20 +263,11 @@ func (p *CLIProvider) ExecuteCableTest(ctx context.Context, req model.CableTestR
 }
 
 // ExecutePing 执行 Ping 诊断 (Mock)
-// 模拟真实的 Ping 行为：可达地址返回成功，不可达地址返回失败
 func (p *MockProvider) ExecutePing(ctx context.Context, req model.PingRequest) (*model.PingTaskResponse, error) {
-	// 根据目标地址模拟不同的 Ping 结果
-	// 以下地址模拟为"可达"：
-	//   - 192.168.x.x, 10.x.x.x, 172.16-31.x.x (私有地址)
-	//   - 8.8.8.8, 1.1.1.1 (公共 DNS)
-	//   - localhost, 127.0.0.1
-	// 其他地址模拟为"不可达"
-
 	target := strings.ToLower(req.Target)
 	isReachable := isSimulatedReachable(target)
 
 	if !isReachable {
-		// 模拟不可达的 Ping 结果
 		return &model.PingTaskResponse{
 			TaskID: "mock-task-id",
 			Status: "completed",
@@ -243,7 +291,6 @@ func (p *MockProvider) ExecutePing(ctx context.Context, req model.PingRequest) (
 		}, nil
 	}
 
-	// 模拟成功的 Ping 结果
 	return &model.PingTaskResponse{
 		TaskID: "mock-task-id",
 		Status: "completed",
@@ -268,15 +315,12 @@ func (p *MockProvider) ExecutePing(ctx context.Context, req model.PingRequest) (
 
 // isSimulatedReachable 判断目标地址是否应该模拟为"可达"
 func isSimulatedReachable(target string) bool {
-	// 本地地址
 	if target == "localhost" || target == "127.0.0.1" || target == "::1" {
 		return true
 	}
 
-	// 私有地址段
 	privatePrefixes := []string{
-		"192.168.",
-		"10.",
+		"192.168.", "10.",
 		"172.16.", "172.17.", "172.18.", "172.19.",
 		"172.20.", "172.21.", "172.22.", "172.23.",
 		"172.24.", "172.25.", "172.26.", "172.27.",
@@ -288,13 +332,11 @@ func isSimulatedReachable(target string) bool {
 		}
 	}
 
-	// 公共 DNS 服务器
 	if target == "8.8.8.8" || target == "8.8.4.4" ||
 		target == "1.1.1.1" || target == "1.0.0.1" {
 		return true
 	}
 
-	// 默认网关常见地址
 	if strings.HasSuffix(target, ".1") && len(target) <= 15 {
 		return true
 	}
@@ -304,7 +346,6 @@ func isSimulatedReachable(target string) bool {
 
 // ExecuteTraceroute 执行 Traceroute 诊断 (Mock)
 func (p *MockProvider) ExecuteTraceroute(ctx context.Context, req model.TracerouteRequest) (*model.TracerouteResponse, error) {
-	// Mock 数据返回
 	return &model.TracerouteResponse{
 		TaskID: "mock-task-id",
 		Status: "completed",
@@ -320,7 +361,6 @@ func (p *MockProvider) ExecuteTraceroute(ctx context.Context, req model.Tracerou
 
 // ExecuteCableTest 执行电缆检测 (Mock)
 func (p *MockProvider) ExecuteCableTest(ctx context.Context, req model.CableTestRequest) (*model.CableTestResult, error) {
-	// Mock 数据返回
 	return &model.CableTestResult{
 		TaskID:      "mock-task-id",
 		PortID:      req.PortID,
