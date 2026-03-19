@@ -1,4 +1,4 @@
-package datamodel
+package system
 
 import (
 	"log"
@@ -10,7 +10,7 @@ import (
 )
 
 // BootstrapFilePath 指定 Bootstrap 文件路径
-const BootstrapFilePath = "internal/datamodel/bootstrap.go"
+const BootstrapFilePath = "internal/datamodel/system/bootstrap.go"
 
 // Bootstrap 初始化函数
 // 初始化数据库表和菜单数据
@@ -19,11 +19,7 @@ func Bootstrap(e *engine.Engine) {
 	InitDatabaseTables(connection)
 	InitMenu(connection)
 	InitDashboard(connection)
-	InitMaintenanceMenu(connection) // 单独添加维护菜单
-	InitConfigMenu(connection)      // 添加配置模块菜单
 }
-
-// InitDatabaseTables 初始化 GoAdmin 所需的数据库表
 func InitDatabaseTables(conn db.Connection) {
 	// 检查表是否已存在
 	exists, _ := conn.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goadmin_users'")
@@ -56,153 +52,63 @@ func InitDatabaseTables(conn db.Connection) {
 	log.Println("数据库表初始化完成")
 }
 
-// InitMenu 初始化网络管理和维护菜单
+// InitMenu 初始化网络管理主菜单
 func InitMenu(conn db.Connection) {
-	// 强制清除旧的菜单数据（以便重新初始化）
-	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理' OR title = '系统配置')")
+	// 强制清除旧的网络管理菜单数据（以便重新初始化）
+	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理')")
 	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '网络管理')")
 	conn.Exec("DELETE FROM goadmin_menu WHERE title = '网络管理'")
-	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '系统配置')")
-	conn.Exec("DELETE FROM goadmin_menu WHERE title = '系统配置'")
-
-	// 强制清除配置菜单数据
-	conn.Exec("DELETE FROM goadmin_role_menu WHERE menu_id IN (SELECT id FROM goadmin_menu WHERE title = '配置')")
-	conn.Exec("DELETE FROM goadmin_menu WHERE parent_id IN (SELECT id FROM goadmin_menu WHERE title = '配置')")
-	conn.Exec("DELETE FROM goadmin_menu WHERE title = '配置'")
-
-	var networkId int64
-	var systemId int64
-	var maintenanceId int64
 
 	// 插入网络管理主菜单
 	networkResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '网络管理', '', 'fa fa-sitemap', 1)")
 	if err != nil {
 		log.Printf("插入网络管理菜单失败：%v", err)
-	} else {
-		networkId, _ = networkResult.LastInsertId()
-		log.Println("插入网络管理主菜单，图标：fa fa-sitemap")
+		return
 	}
+	networkId, _ := networkResult.LastInsertId()
+	log.Println("插入网络管理主菜单，图标：fa fa-sitemap")
 
-	// 插入系统配置主菜单
-	systemResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '系统配置', '', 'fa fa-cog', 2)")
-	if err != nil {
-		log.Printf("插入系统配置菜单失败：%v", err)
-	} else {
-		systemId, _ = systemResult.LastInsertId()
-		log.Println("插入系统配置主菜单，图标：fa fa-cog")
-	}
-
-	// 检查维护主菜单是否已存在
-	maintenanceExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
-	if maintenanceExists == nil || len(maintenanceExists) == 0 {
-		// 插入维护主菜单
-		maintenanceResult, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (0, 0, '维护', '', 'fa fa-wrench', 3)")
-		if err != nil {
-			log.Printf("插入维护菜单失败：%v", err)
-		} else {
-			maintenanceId, _ = maintenanceResult.LastInsertId()
-			log.Println("插入维护主菜单")
-		}
-	} else {
-		maintenanceId = maintenanceExists[0]["id"].(int64)
-		// 更新维护菜单图标
-		conn.Exec("UPDATE goadmin_menu SET icon = 'fa fa-wrench' WHERE id = ?", maintenanceId)
-		log.Println("更新维护菜单图标")
-	}
-
-	// 插入子菜单（只插入不存在的）
+	// 插入网络管理子菜单
 	subMenus := []struct {
-		parentId int64
-		name     string
-		uri      string
-		icon     string
-		order    int
+		name  string
+		uri   string
+		icon  string
+		order int
 	}{
-		// 网络管理子菜单
-		{networkId, "IPv4 路由表", "/network/route-table", "fa fa-list-alt", 1},
-		{networkId, "IPv4 静态路由", "/network/static-route", "fa fa-road", 2},
-		{networkId, "Ping 诊断", "/network/ping", "fa fa-exchange", 3},
-		{networkId, "Traceroute 诊断", "/network/traceroute", "fa fa-random", 4},
-		{networkId, "虚拟电缆检测", "/network/cable-test", "fa fa-wrench", 5},
-		// 系统配置子菜单
-		{systemId, "系统配置", "/system/config", "fa fa-wrench", 1},
-		// 维护子菜单
-		{maintenanceId, "重启/保存", "/maintenance/reboot-save", "fa fa-power-off", 1},
-		{maintenanceId, "用户管理", "/maintenance/users", "fa fa-users", 2},
-		{maintenanceId, "系统配置", "/maintenance/system-config", "fa fa-cogs", 3},
-		{maintenanceId, "加载配置", "/maintenance/load-config", "fa fa-upload", 4},
-		{maintenanceId, "文件管理", "/maintenance/files", "fa fa-file", 5},
-		{maintenanceId, "日志管理", "/maintenance/logs", "fa fa-history", 6},
-		{maintenanceId, "SNMP 配置", "/maintenance/snmp", "fa fa-bell", 7},
-		{maintenanceId, "SNMP Trap 配置", "/maintenance/snmp-trap", "fa fa-exclamation-triangle", 8},
-		{maintenanceId, "蠕虫攻击防护", "/maintenance/worm-protection", "fa fa-bug", 9},
-		{maintenanceId, "DDoS 攻击防护", "/maintenance/ddos-protection", "fa fa-shield", 10},
-		{maintenanceId, "ARP 攻击防护", "/maintenance/arp-protection", "fa fa-lock", 11},
-		{maintenanceId, "当前会话", "/maintenance/sessions", "fa fa-clock-o", 12},
+		{"IPv4 路由表", "/network/route-table", "fa fa-list-alt", 1},
+		{"IPv4 静态路由", "/network/static-route", "fa fa-road", 2},
+		{"Ping 诊断", "/network/ping", "fa fa-exchange", 3},
+		{"Traceroute 诊断", "/network/traceroute", "fa fa-random", 4},
+		{"虚拟电缆检测", "/network/cable-test", "fa fa-wrench", 5},
 	}
 
 	for _, menu := range subMenus {
 		// 检查子菜单是否已存在
-		exists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = ? AND parent_id = ? LIMIT 1", menu.name, menu.parentId)
+		exists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = ? AND parent_id = ? LIMIT 1", menu.name, networkId)
 		if exists != nil && len(exists) > 0 {
 			continue // 已存在，跳过
 		}
 		_, err := conn.Exec("INSERT INTO goadmin_menu (parent_id, type, title, uri, icon, `order`) VALUES (?, 1, ?, ?, ?, ?)",
-			menu.parentId, menu.name, menu.uri, menu.icon, menu.order)
+			networkId, menu.name, menu.uri, menu.icon, menu.order)
 		if err != nil {
 			log.Printf("插入菜单 %s 失败：%v", menu.name, err)
 		} else {
-			log.Printf("插入菜单：%s (parent_id=%d)", menu.name, menu.parentId)
+			log.Printf("插入菜单：%s (parent_id=%d)", menu.name, networkId)
 		}
 	}
 
-	// 添加角色菜单关联（让管理员角色可以看到这些菜单）
-	// 首先获取管理员角色 ID（通常为 1）
+	// 添加角色菜单关联
 	adminRoleId := int64(1)
+	conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, networkId)
 
-	// 获取网络管理主菜单 ID
-	networkMenuExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '网络管理' LIMIT 1")
-	if len(networkMenuExists) > 0 {
-		networkMenuId := int(networkMenuExists[0]["id"].(int64))
-		conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, networkMenuId)
-
-		// 添加子菜单关联
-		networkSubMenus, _ := conn.Query("SELECT id FROM goadmin_menu WHERE parent_id = ?", networkMenuId)
-		for _, row := range networkSubMenus {
-			menuId := int(row["id"].(int64))
-			conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, menuId)
-		}
+	// 添加子菜单关联
+	subMenusResult, _ := conn.Query("SELECT id FROM goadmin_menu WHERE parent_id = ?", networkId)
+	for _, row := range subMenusResult {
+		menuId := int(row["id"].(int64))
+		conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, menuId)
 	}
 
-	// 获取系统配置主菜单 ID
-	systemMenuExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '系统配置' LIMIT 1")
-	if len(systemMenuExists) > 0 {
-		systemMenuId := int(systemMenuExists[0]["id"].(int64))
-		conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, systemMenuId)
-
-		// 添加子菜单关联
-		systemSubMenus, _ := conn.Query("SELECT id FROM goadmin_menu WHERE parent_id = ?", systemMenuId)
-		for _, row := range systemSubMenus {
-			menuId := int(row["id"].(int64))
-			conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, menuId)
-		}
-	}
-
-	// 获取维护主菜单 ID
-	maintenanceMenuExists, _ := conn.Query("SELECT id FROM goadmin_menu WHERE title = '维护' LIMIT 1")
-	if len(maintenanceMenuExists) > 0 {
-		maintenanceMenuId := int(maintenanceMenuExists[0]["id"].(int64))
-		conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, maintenanceMenuId)
-
-		// 添加子菜单关联
-		maintenanceSubMenus, _ := conn.Query("SELECT id FROM goadmin_menu WHERE parent_id = ?", maintenanceMenuId)
-		for _, row := range maintenanceSubMenus {
-			menuId := int(row["id"].(int64))
-			conn.Exec("INSERT OR IGNORE INTO goadmin_role_menu (role_id, menu_id) VALUES (?, ?)", adminRoleId, menuId)
-		}
-	}
-
-	log.Println("菜单初始化完成")
+	log.Println("网络管理菜单初始化完成")
 }
 
 // InitDashboard 初始化 Dashboard 菜单

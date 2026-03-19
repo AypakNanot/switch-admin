@@ -1,4 +1,4 @@
-package datamodel
+package diagnostic
 
 import (
 	"html/template"

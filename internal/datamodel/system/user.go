@@ -1,4 +1,4 @@
-package datamodel
+package system
 
 import (
 	"github.com/GoAdminGroup/go-admin/context"

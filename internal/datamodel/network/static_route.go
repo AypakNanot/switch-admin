@@ -1,4 +1,4 @@
-package datamodel
+package network
 
 import (
 	"html/template"

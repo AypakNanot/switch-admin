@@ -18,9 +18,11 @@ import (
 	"github.com/GoAdminGroup/themes/adminlte"
 	"github.com/gin-gonic/gin"
 	"switch-admin/internal/datamodel"
+	systemDatamodel "switch-admin/internal/datamodel/system"
 	maintDatamodel "switch-admin/internal/datamodel/maintenance"
 	configDatamodel "switch-admin/internal/datamodel/config"
 	networkDatamodel "switch-admin/internal/datamodel/network"
+	diagnosticDatamodel "switch-admin/internal/datamodel/diagnostic"
 	"switch-admin/internal/handler"
 	maintHandler "switch-admin/internal/handler/maintenance"
 	networkHandler "switch-admin/internal/handler/network"
@@ -244,35 +246,35 @@ func main() {
 	e.AddConfig(&cfg)
 
 	// 在 Use 之前先初始化数据库表（创建 GoAdmin 所需的表）
-	datamodel.InitDatabaseTables(e.SqliteConnection())
+	systemDatamodel.InitDatabaseTables(e.SqliteConnection())
 
-	if err := e.AddGenerators(datamodel.Generators).
-		AddGenerator("user", datamodel.GetUserTable).
+	if err := e.AddGenerators(systemDatamodel.Generators).
+		AddGenerator("user", systemDatamodel.GetUserTable).
 		AddDisplayFilterXssJsFilter().
 		Use(r); err != nil {
 		panic(err)
 	}
 
 	// 初始化菜单
-	datamodel.InitMenu(e.SqliteConnection())
-	datamodel.InitDashboard(e.SqliteConnection())
-	datamodel.InitConfigMenu(e.SqliteConnection())
+	systemDatamodel.InitMenu(e.SqliteConnection())
+	systemDatamodel.InitDashboard(e.SqliteConnection())
+	systemDatamodel.InitConfigMenu(e.SqliteConnection())
 
 	r.Static("/uploads", "./uploads")
 
 	// 注册自定义页面 - 使用 GoAdmin 的 HTML 方法
 	// Dashboard 和系统配置
-	e.HTML("GET", "/admin/dashboard", datamodel.GetDashboardContent, false)
-	e.HTML("GET", "/admin/system/config", datamodel.GetSystemConfigPage, false)
+	e.HTML("GET", "/admin/dashboard", systemDatamodel.GetDashboardContent, false)
+	e.HTML("GET", "/admin/system/config", systemDatamodel.GetSystemConfigPage, false)
 
 	// 网络模块 - IP 路由
-	e.HTML("GET", "/admin/network/route-table", datamodel.GetRouteTableContent, false)
-	e.HTML("GET", "/admin/network/static-route", datamodel.GetStaticRouteContent, false)
+	e.HTML("GET", "/admin/network/route-table", networkDatamodel.GetRouteTableContent, false)
+	e.HTML("GET", "/admin/network/static-route", networkDatamodel.GetStaticRouteContent, false)
 
 	// 网络模块 - 诊断工具
-	e.HTML("GET", "/admin/network/ping", datamodel.GetPingContent, false)
-	e.HTML("GET", "/admin/network/traceroute", datamodel.GetTracerouteContent, false)
-	e.HTML("GET", "/admin/network/cable-test", datamodel.GetCableTestContent, false)
+	e.HTML("GET", "/admin/network/ping", diagnosticDatamodel.GetPingContent, false)
+	e.HTML("GET", "/admin/network/traceroute", diagnosticDatamodel.GetTracerouteContent, false)
+	e.HTML("GET", "/admin/network/cable-test", diagnosticDatamodel.GetCableTestContent, false)
 
 	// 维护模块
 	e.HTML("GET", "/admin/maintenance/reboot-save", maintDatamodel.GetRebootSaveContent, false)

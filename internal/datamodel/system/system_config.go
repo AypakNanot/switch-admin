@@ -1,4 +1,4 @@
-package datamodel
+package system
 
 import (
 	"html/template"
