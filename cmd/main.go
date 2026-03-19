@@ -38,7 +38,6 @@ func main() {
 	e := engine.Default()
 
 	sysHandler := systemHandler.NewSystemHandler()
-	routeHandler := networkHandler.NewRouteHandler()
 	diagnosticHandler := diagnosticHandler.NewDiagnosticHandler()
 	maintenanceHandler := maintHandler.New()
 	networkHandler := networkHandler.New()
@@ -70,13 +69,13 @@ func main() {
 		})
 	})
 
-	// 网络模块 API - 路由管理
-	r.GET("/api/v1/routes/table", routeHandler.GetRouteTable)
-	r.GET("/api/v1/routes/static", routeHandler.GetStaticRoutes)
-	r.GET("/api/v1/routes/static/:id", routeHandler.GetStaticRoute)
-	r.POST("/api/v1/routes/static", routeHandler.CreateStaticRoute)
-	r.PUT("/api/v1/routes/static/:id", routeHandler.UpdateStaticRoute)
-	r.DELETE("/api/v1/routes/static/:id", routeHandler.DeleteStaticRoute)
+	// 网络模块 API - 路由表
+	r.GET("/api/v1/routes/table", networkHandler.GetRouteTable)
+	r.GET("/api/v1/routes/static", networkHandler.GetStaticRoutes)
+	r.GET("/api/v1/routes/static/:id", networkHandler.GetStaticRoute)
+	r.POST("/api/v1/routes/static", networkHandler.CreateStaticRoute)
+	r.PUT("/api/v1/routes/static/:id", networkHandler.UpdateStaticRoute)
+	r.DELETE("/api/v1/routes/static/:id", networkHandler.DeleteStaticRoute)
 
 	// 网络模块 API - 诊断工具
 	r.GET("/api/v1/diagnostic/cable/ports", diagnosticHandler.GetDetectablePorts)

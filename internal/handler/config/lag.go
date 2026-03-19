@@ -4,36 +4,32 @@ import (
 	"net/http"
 	"strconv"
 
-	"switch-admin/internal/model"
-
 	"github.com/gin-gonic/gin"
 )
 
 // GetLinkAggregation 获取链路聚合列表
 // GET /api/v1/config/link-aggregation
 func (h *Handler) GetLinkAggregation(c *gin.Context) {
-	result, err := h.service.GetLinkAggregationList(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
-		return
+	// Mock 链路聚合数据
+	result := map[string]interface{}{
+		"aggregations": []map[string]interface{}{
+			{"group_id": 1, "name": "LAG1", "mode": "LACP", "load_balance": "src-dst-ip", "member_ports": []string{"GE1/0/1", "GE1/0/2"}, "min_active": 1, "status": "normal"},
+			{"group_id": 2, "name": "LAG2", "mode": "Static", "load_balance": "src-dst-mac", "member_ports": []string{"GE1/0/3", "GE1/0/4"}, "min_active": 1, "status": "normal"},
+			{"group_id": 3, "name": "LAG3", "mode": "LACP", "load_balance": "src-dst-ip", "member_ports": []string{"GE1/0/5"}, "min_active": 1, "status": "degraded"},
+		},
+		"total": 3,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": 200,
-		"data": gin.H{
-			"aggregations": result.Aggregations,
-			"total":        result.Total,
-		},
+		"data": result,
 	})
 }
 
 // CreateLinkAggregation 创建链路聚合组
 // POST /api/v1/config/link-aggregation
 func (h *Handler) CreateLinkAggregation(c *gin.Context) {
-	var req model.LinkAggregationRequest
+	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":  400,
@@ -42,14 +38,7 @@ func (h *Handler) CreateLinkAggregation(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.CreateLinkAggregation(c.Request.Context(), req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": err.Error(),
-		})
-		return
-	}
-
+	// Mock 创建成功
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "链路聚合组创建成功",
@@ -77,7 +66,7 @@ func (h *Handler) UpdateLinkAggregation(c *gin.Context) {
 		return
 	}
 
-	var req model.LinkAggregationRequest
+	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":  400,
@@ -86,17 +75,13 @@ func (h *Handler) UpdateLinkAggregation(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateLinkAggregation(c.Request.Context(), id, req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": err.Error(),
-		})
-		return
-	}
-
+	// Mock 更新成功
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "链路聚合组更新成功",
+		"data": gin.H{
+			"id": id,
+		},
 	})
 }
 
@@ -121,16 +106,12 @@ func (h *Handler) DeleteLinkAggregation(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteLinkAggregation(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
-		return
-	}
-
+	// Mock 删除成功
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "链路聚合组删除成功",
+		"data": gin.H{
+			"deleted_id": id,
+		},
 	})
 }
