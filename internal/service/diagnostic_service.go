@@ -95,11 +95,11 @@ func (s *DiagnosticService) CreatePingTask(req model.PingRequest) (string, error
 
 // executePing 执行 Ping（使用 Provider 模式）
 func (s *DiagnosticService) executePing(taskID string, req model.PingRequest) {
-	// 通过 ModeResolver 获取 Provider
-	pingProvider := s.modeResolver.GetPingProvider()
+	// 通过 ModeResolver 获取 Diagnostic Provider
+	diagnosticProvider := s.modeResolver.GetDiagnosticProvider()
 
 	// 执行 Ping
-	response, err := pingProvider.ExecutePing(context.Background(), req)
+	response, err := diagnosticProvider.ExecutePing(context.Background(), req)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

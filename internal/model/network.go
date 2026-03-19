@@ -159,3 +159,65 @@ type ACLRuleRequest struct {
 	Port        string `json:"port"`
 	Protocol    string `json:"protocol"`
 }
+
+// VLANConfig VLAN 配置详情
+type VLANConfig struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Ports       []int  `json:"ports"`
+	TaggedPorts []int  `json:"tagged_ports"`
+	Status      string `json:"status"`
+}
+
+// VLANConfigListResponse VLAN 配置列表响应
+type VLANConfigListResponse struct {
+	VLANs []VLANConfig `json:"vlans"`
+	Total int          `json:"total"`
+}
+
+// VLANCreateRequest VLAN 创建请求
+type VLANCreateRequest struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Ports       []int  `json:"ports"`
+	TaggedPorts []int  `json:"tagged_ports"`
+}
+
+// VLANUpdateRequest VLAN 更新请求
+type VLANUpdateRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Ports       []int  `json:"ports"`
+	TaggedPorts []int  `json:"tagged_ports"`
+}
+
+// PoEConfig PoE 配置
+type PoEConfig struct {
+	Enabled       bool     `json:"enabled"`
+	PowerBudget   int      `json:"power_budget"`   // 总功率预算（瓦特）
+	PowerUsed     int      `json:"power_used"`     // 已用功率（瓦特）
+	PowerRemaining int     `json:"power_remaining"` // 剩余功率（瓦特）
+	Ports         []PoEPort `json:"ports"`
+}
+
+// PoEPort PoE 端口配置
+type PoEPort struct {
+	PortID      string `json:"port_id"`
+	Enabled     bool   `json:"enabled"`
+	Priority    string `json:"priority"` // critical/high/low
+	PowerLimit  int    `json:"power_limit"` // 功率限制（瓦特）
+	Status      string `json:"status"`     // delivering/denied/fault
+	PowerDraw   int    `json:"power_draw"`  // 当前功率（瓦特）
+	Voltage     int    `json:"voltage"`     // 电压（毫伏）
+	Current     int    `json:"current"`     // 电流（毫安）
+	Temperature int    `json:"temperature"` // 温度（摄氏度）
+}
+
+// PoEPortRequest PoE 端口请求
+type PoEPortRequest struct {
+	Enabled    bool   `json:"enabled"`
+	Priority   string `json:"priority"`
+	PowerLimit int    `json:"power_limit"`
+}

@@ -6,8 +6,22 @@ import (
 	"switch-admin/internal/model"
 )
 
+// DiagnosticProvider 诊断模块接口
+// 所有诊断操作必须通过此接口，实现模式隔离
+type DiagnosticProvider interface {
+	// ExecutePing 执行 Ping 诊断
+	ExecutePing(ctx context.Context, req model.PingRequest) (*model.PingTaskResponse, error)
+	// ExecuteTraceroute 执行 Traceroute 诊断
+	ExecuteTraceroute(ctx context.Context, req model.TracerouteRequest) (*model.TracerouteResponse, error)
+	// ExecuteCableTest 执行电缆检测
+	ExecuteCableTest(ctx context.Context, req model.CableTestRequest) (*model.CableTestResult, error)
+}
+
+// Legacy interfaces - deprecated, use module-specific providers instead
+
 // PingProvider Ping 诊断接口
 // 所有 Ping 操作必须通过此接口，实现模式隔离
+// Deprecated: use DiagnosticProvider instead
 type PingProvider interface {
 	// ExecutePing 执行 Ping 诊断
 	// - ctx: 上下文，支持取消操作
@@ -17,12 +31,14 @@ type PingProvider interface {
 }
 
 // TracerouteProvider Traceroute 诊断接口
+// Deprecated: use DiagnosticProvider instead
 type TracerouteProvider interface {
 	// ExecuteTraceroute 执行 Traceroute 诊断
 	ExecuteTraceroute(ctx context.Context, req model.TracerouteRequest) (*model.TracerouteResponse, error)
 }
 
 // CableTestProvider 电缆检测接口
+// Deprecated: use DiagnosticProvider instead
 type CableTestProvider interface {
 	// ExecuteCableTest 执行电缆检测
 	ExecuteCableTest(ctx context.Context, req model.CableTestRequest) (*model.CableTestResult, error)

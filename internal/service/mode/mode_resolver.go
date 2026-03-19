@@ -5,8 +5,10 @@ import (
 	"sync"
 
 	"switch-admin/internal/service/provider"
-	"switch-admin/internal/service/provider/cli"
-	"switch-admin/internal/service/provider/mock"
+	"switch-admin/internal/service/provider/diagnostic"
+	"switch-admin/internal/service/provider/maintenance"
+	"switch-admin/internal/service/provider/network"
+	"switch-admin/internal/service/provider/config"
 )
 
 // RunMode 运行模式
@@ -58,14 +60,14 @@ type ModeResolver struct {
 	configDAO ConfigDAO
 
 	// Provider 缓存
-	mockPingProvider         *mock.PingProvider
-	cliPingProvider          *cli.PingProvider
-	mockMaintenanceProvider  *mock.MaintenanceProvider
-	cliMaintenanceProvider   *cli.MaintenanceProvider
-	mockNetworkProvider      *mock.NetworkProvider
-	cliNetworkProvider       *cli.NetworkProvider
-	mockConfigProvider       *mock.ConfigProvider
-	cliConfigProvider        *cli.ConfigProvider
+	mockDiagnosticProvider      *diagnostic.MockProvider
+	cliDiagnosticProvider       *diagnostic.CLIProvider
+	mockMaintenanceProvider     *maintenance.MockProvider
+	cliMaintenanceProvider      *maintenance.CLIProvider
+	mockNetworkProvider         *network.MockProvider
+	cliNetworkProvider          *network.CLIProvider
+	mockConfigProvider          *config.MockProvider
+	cliConfigProvider           *config.CLIProvider
 }
 
 // ConfigDAO 配置数据访问接口（用于解耦）
@@ -81,23 +83,23 @@ type ModeResolverConfig struct {
 }
 
 // NewModeResolver 创建模式解析器
-func NewModeResolver(config ModeResolverConfig) *ModeResolver {
-	mode := config.InitialMode
+func NewModeResolver(cfg ModeResolverConfig) *ModeResolver {
+	mode := cfg.InitialMode
 	if mode == "" {
 		mode = ModeMock // 默认为离线测试模式
 	}
 
 	return &ModeResolver{
 		currentMode:            mode,
-		configDAO:              config.ConfigDAO,
-		mockPingProvider:       mock.NewPingProvider(),
-		cliPingProvider:        cli.NewPingProvider(),
-		mockMaintenanceProvider: mock.NewMaintenanceProvider(),
-		cliMaintenanceProvider:  cli.NewMaintenanceProvider(),
-		mockNetworkProvider:    mock.NewNetworkProvider(),
-		cliNetworkProvider:     cli.NewNetworkProvider(),
-		mockConfigProvider:     mock.NewConfigProvider(),
-		cliConfigProvider:      cli.NewConfigProvider(),
+		configDAO:              cfg.ConfigDAO,
+		mockDiagnosticProvider:      diagnostic.NewMockProvider(),
+		cliDiagnosticProvider:       diagnostic.NewCLIProvider(),
+		mockMaintenanceProvider:     maintenance.NewMockProvider(),
+		cliMaintenanceProvider:      maintenance.NewCLIProvider(),
+		mockNetworkProvider:         network.NewMockProvider(),
+		cliNetworkProvider:          network.NewCLIProvider(),
+		mockConfigProvider:          config.NewMockProvider(),
+		cliConfigProvider:           config.NewCLIProvider(),
 	}
 }
 
@@ -182,19 +184,19 @@ func (r *ModeResolver) LoadFromDatabase() error {
 	return nil
 }
 
-// GetPingProvider 根据当前模式返回对应的 Ping Provider
-func (r *ModeResolver) GetPingProvider() provider.PingProvider {
+// GetDiagnosticProvider 根据当前模式返回对应的 Diagnostic Provider
+func (r *ModeResolver) GetDiagnosticProvider() provider.DiagnosticProvider {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var pingProvider provider.PingProvider
+	var diagnosticProvider provider.DiagnosticProvider
 	if r.currentMode == ModeSwitch {
-		pingProvider = r.cliPingProvider
+		diagnosticProvider = r.cliDiagnosticProvider
 	} else {
-		pingProvider = r.mockPingProvider
+		diagnosticProvider = r.mockDiagnosticProvider
 	}
 
-	return pingProvider
+	return diagnosticProvider
 }
 
 // GetMaintenanceProvider 根据当前模式返回对应的 Maintenance Provider
