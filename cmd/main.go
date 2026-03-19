@@ -17,16 +17,16 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/chartjs"
 	"github.com/GoAdminGroup/themes/adminlte"
 	"github.com/gin-gonic/gin"
-	"switch-admin/internal/datamodel"
 	systemDatamodel "switch-admin/internal/datamodel/system"
 	maintDatamodel "switch-admin/internal/datamodel/maintenance"
 	configDatamodel "switch-admin/internal/datamodel/config"
 	networkDatamodel "switch-admin/internal/datamodel/network"
 	diagnosticDatamodel "switch-admin/internal/datamodel/diagnostic"
-	"switch-admin/internal/handler"
+	systemHandler "switch-admin/internal/handler/system"
 	maintHandler "switch-admin/internal/handler/maintenance"
 	networkHandler "switch-admin/internal/handler/network"
 	configHandler "switch-admin/internal/handler/config"
+	diagnosticHandler "switch-admin/internal/handler/diagnostic"
 )
 
 func main() {
@@ -37,9 +37,9 @@ func main() {
 	r := gin.Default()
 	e := engine.Default()
 
-	sysHandler := handler.NewSystemHandler()
-	routeHandler := handler.NewRouteHandler()
-	diagnosticHandler := handler.NewDiagnosticHandler()
+	sysHandler := systemHandler.NewSystemHandler()
+	routeHandler := networkHandler.NewRouteHandler()
+	diagnosticHandler := diagnosticHandler.NewDiagnosticHandler()
 	maintenanceHandler := maintHandler.New()
 	networkHandler := networkHandler.New()
 	configHandler := configHandler.New()

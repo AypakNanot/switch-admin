@@ -1,4 +1,4 @@
-package handler
+package diagnostic
 
 import (
 	"net/http"
