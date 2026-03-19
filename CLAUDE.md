@@ -355,11 +355,27 @@ DataModel 层 (internal/datamodel/config/)
 
 **按功能子模块拆分** - 每个子功能独立成文件：
 
+#### 已实现的功能模块
+
 | 功能模块 | Handler | Provider (Mock/CLI) | DataModel |
 |---------|---------|---------------------|-----------|
 | 端口配置 | `port.go` | `config_port.go` | `port.go` |
 | 链路聚合 | `lag.go` | `config_lag.go` | `lag.go` |
-| 基础结构 | `handler.go` | `config_base.go` | `config.go` |
+| 风暴控制 | - | `config_storm.go` | `storm_control.go` |
+| 流量控制 | - | `config_flow.go` | `flow_control.go` |
+| 端口隔离 | - | `config_isolation.go` | `port_isolation.go` |
+| 端口监控 | - | `config_monitor.go` | `port_monitor.go` |
+| VLAN 配置 | - | `config_vlan.go` | `vlan_config.go` |
+| MAC 地址表 | - | `config_mac.go` | `mac_table.go` |
+| STP 配置 | - | `config_stp.go` | `stp_config.go` |
+| ERPS 配置 | - | `config_erps.go` | `erps.go` |
+| PoE 配置 | - | `config_poe.go` | `poe.go` |
+| 端口镜像 | - | `config_mirror.go` | `port_mirror.go` |
+| 组播配置 | - | `config_multicast.go` | `multicast.go` |
+| 资源管理 | - | `config_resource.go` | `resource.go` |
+| 堆叠配置 | - | `config_stack.go` | `stack.go` |
+
+**跨层文件对应** - 每一层文件命名保持一致，便于导航。
 
 ### 3. 各层实现规范
 
@@ -431,11 +447,122 @@ func GetPortsContent(ctx *context.Context) (types.Panel, error) {
 func GetLinkAggregationContent(ctx *context.Context) (types.Panel, error) {
     return getLinkAggregationContent(ctx)
 }
+func GetStormControlContent(ctx *context.Context) (types.Panel, error) {
+    return getStormControlContent(ctx)
+}
+func GetFlowControlContent(ctx *context.Context) (types.Panel, error) {
+    return getFlowControlContent(ctx)
+}
+func GetPortIsolationContent(ctx *context.Context) (types.Panel, error) {
+    return getPortIsolationContent(ctx)
+}
+func GetPortMonitorContent(ctx *context.Context) (types.Panel, error) {
+    return getPortMonitorContent(ctx)
+}
+func GetVLANContent(ctx *context.Context) (types.Panel, error) {
+    return getVLANContent(ctx)
+}
+func GetMacTableContent(ctx *context.Context) (types.Panel, error) {
+    return getMacTableContent(ctx)
+}
+func GetSTPContent(ctx *context.Context) (types.Panel, error) {
+    return getSTPContent(ctx)
+}
+func GetERPSContent(ctx *context.Context) (types.Panel, error) {
+    return getERPSContent(ctx)
+}
+func GetPoEContent(ctx *context.Context) (types.Panel, error) {
+    return getPoEContent(ctx)
+}
+func GetPortMirrorContent(ctx *context.Context) (types.Panel, error) {
+    return getPortMirrorContent(ctx)
+}
+func GetMulticastContent(ctx *context.Context) (types.Panel, error) {
+    return getMulticastContent(ctx)
+}
+func GetResourceContent(ctx *context.Context) (types.Panel, error) {
+    return getResourceContent(ctx)
+}
+func GetStackContent(ctx *context.Context) (types.Panel, error) {
+    return getStackContent(ctx)
+}
 
 // port.go - 端口配置页面实现
 func getPortsContent(ctx *context.Context) (types.Panel, error) {
     // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
     // fetch API 调用后端 Handler (/api/v1/config/ports)
+}
+
+// lag.go - 链路聚合页面实现
+func getLinkAggregationContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+    // fetch API 调用后端 Handler (/api/v1/config/link-aggregation)
+}
+
+// storm_control.go - 风暴控制页面实现
+func getStormControlContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+    // fetch API 调用后端 Handler
+}
+
+// flow_control.go - 流量控制页面实现
+func getFlowControlContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// port_isolation.go - 端口隔离页面实现
+func getPortIsolationContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// port_monitor.go - 端口监控页面实现
+func getPortMonitorContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// vlan_config.go - VLAN 配置页面实现
+func getVLANContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// mac_table.go - MAC 地址表页面实现
+func getMacTableContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// stp_config.go - STP 配置页面实现
+func getSTPContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// erps.go - ERPS 配置页面实现
+func getERPSContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// poe.go - PoE 配置页面实现
+func getPoEContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// port_mirror.go - 端口镜像页面实现
+func getPortMirrorContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// multicast.go - 组播配置页面实现
+func getMulticastContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// resource.go - 资源管理页面实现
+func getResourceContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
+}
+
+// stack.go - 堆叠配置页面实现
+func getStackContent(ctx *context.Context) (types.Panel, error) {
+    // HTML/CSS/JS 内嵌 + GoAdmin 组件构建
 }
 ```
 
@@ -522,7 +649,7 @@ type LinkAggregationRequest struct {
 
 | 特性 | Maintenance | Network | Config |
 |------|-------------|---------|--------|
-| 核心功能 | 系统维护、安全防护 | 网络管理、诊断 | 端口配置、链路聚合 |
+| 核心功能 | 系统维护、安全防护 | 网络管理、诊断 | 端口配置、链路聚合、VLAN、STP 等 |
 | Handler 路径 | `internal/handler/maintenance/` | `internal/handler/network/` | `internal/handler/config/` |
 | DataModel 路径 | `internal/datamodel/maintenance/` | `internal/datamodel/network/` | `internal/datamodel/config/` |
 | Service | `MaintenanceService` | `NetworkService` | `ConfigService` |
@@ -530,3 +657,4 @@ type LinkAggregationRequest struct {
 | 模式切换 | ✓ | ✓ | ✓ |
 | 单例模式 | ✓ | ✓ | ✓ |
 | 线程安全 | ✓ | ✓ | ✓ |
+| DataModel 文件数 | 10+ | 5 | 14 |
