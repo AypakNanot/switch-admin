@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	_ "github.com/GoAdminGroup/go-admin/adapter/gin"
@@ -32,6 +34,23 @@ import (
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 	// gin.DefaultWriter = ioutil.Discard  // 注释掉以启用日志
+
+	// 获取可执行文件所在目录
+	execPath, err := os.Executable()
+	if err != nil {
+		log.Fatal("Failed to get executable path:", err)
+	}
+	execDir := filepath.Dir(execPath)
+
+	// 自动创建必要的目录
+	dataDir := filepath.Join(execDir, "data")
+	uploadsDir := filepath.Join(execDir, "uploads")
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		log.Fatal("Failed to create data directory:", err)
+	}
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		log.Fatal("Failed to create uploads directory:", err)
+	}
 
 	// 主引擎用于 GoAdmin
 	r := gin.Default()
@@ -217,7 +236,7 @@ func main() {
 		Databases: config.DatabaseList{
 			"default": {
 				Driver:          config.DriverSqlite,
-				File:            "data/admin.db",
+				File:            filepath.Join(execDir, "data", "admin.db"),
 				MaxIdleConns:    50,
 				MaxOpenConns:    150,
 				ConnMaxLifetime: time.Hour,
@@ -225,7 +244,7 @@ func main() {
 		},
 		UrlPrefix: "admin",
 		Store: config.Store{
-			Path:   "./uploads",
+			Path:   filepath.Join(execDir, "uploads"),
 			Prefix: "uploads",
 		},
 		Language:           language.CN,
@@ -236,7 +255,7 @@ func main() {
 			Type: "fadeInUp",
 		},
 		ColorScheme:       adminlte.ColorschemeSkinBlack,
-		BootstrapFilePath: "./internal/datamodel/bootstrap.go",
+		BootstrapFilePath: filepath.Join(execDir, "internal", "datamodel", "bootstrap.go"),
 	}
 
 	template.AddComp(chartjs.NewChart())
@@ -257,6 +276,7 @@ func main() {
 	// 初始化菜单
 	systemDatamodel.InitMenu(e.SqliteConnection())
 	systemDatamodel.InitDashboard(e.SqliteConnection())
+	systemDatamodel.InitMaintenanceMenu(e.SqliteConnection())
 	systemDatamodel.InitConfigMenu(e.SqliteConnection())
 
 	r.Static("/uploads", "./uploads")

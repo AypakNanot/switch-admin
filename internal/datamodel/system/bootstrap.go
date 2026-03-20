@@ -172,7 +172,7 @@ func InitMaintenanceMenu(conn db.Connection) {
 	}{
 		{"重启/保存", "/maintenance/reboot-save", "fa fa-power-off", 1},
 		{"用户管理", "/maintenance/users", "fa fa-users", 2},
-		{"系统配置", "/maintenance/system-config", "fa fa-cogs", 3},
+		{"系统配置", "/system/config", "fa fa-cogs", 3},
 		{"加载配置", "/maintenance/load-config", "fa fa-upload", 4},
 		{"文件管理", "/maintenance/files", "fa fa-file", 5},
 		{"日志管理", "/maintenance/logs", "fa fa-history", 6},

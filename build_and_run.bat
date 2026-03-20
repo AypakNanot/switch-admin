@@ -1,14 +1,14 @@
 @echo off
 cd /d %~dp0
 
-rem 动态查找 Go 路径
+rem Find Go path dynamically
 where go >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 未找到 Go，请确保已安装并添加到 PATH
+    echo [ERROR] Go not found. Please ensure Go is installed and added to PATH.
     exit /b 1
 )
 
-rem 清除 GOPATH 环境变量，强制使用 Go Modules 模式
+rem Clear GOPATH to force Go Modules mode
 set GOPATH=
 
 echo Stopping existing processes...

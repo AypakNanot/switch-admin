@@ -19,6 +19,22 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 ---
 
+# 开发协作规范
+
+## 重要规范
+
+### 1. 禁止主动提交代码
+
+**规范**：AI 助手不得主动执行 git commit 或 git push 操作。
+
+- ✅ 可以执行：代码修改、文件创建/编辑、编译、测试
+- ❌ 禁止执行：`git commit`、`git push`（除非用户明确要求）
+- ✅ 可以执行：`git status`、`git diff` 查看状态
+
+当完成代码修改后，应等待用户检查并明确指示提交。
+
+---
+
 # 项目架构总览
 
 ## 核心架构模式
